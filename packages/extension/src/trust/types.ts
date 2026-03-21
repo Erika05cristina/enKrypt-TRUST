@@ -1,50 +1,57 @@
-export type PendingTxContext = {
+export type TrustRiskFlag =
+  | 'UNLIMITED_APPROVAL'
+  | 'UNKNOWN_CONTRACT'
+  | 'UNVERIFIED_CONTRACT'
+  | 'SUSPICIOUS_ORIGIN'
+  | 'HIGH_RISK_PATTERN';
+
+export interface TrustRiskCheckRequest {
   chainId: number;
-  from: string;
   to: string;
-  value: string;
   data: string;
+  value: string;
   origin?: string;
-  gasLimit?: string;
-  maxFeePerGas?: string;
-  maxPriorityFeePerGas?: string;
-  nonce?: number;
-};
+  localFlags?: string[];
+}
 
-export type LocalRiskSignals = {
-  actionType: "transfer" | "approve" | "swap" | "contract_call" | "unknown";
-  methodSig?: string;
-  decodedMethod?: string;
-  tokenAddress?: string;
-  spender?: string;
-  approvalAmount?: string;
-  isUnlimitedApproval: boolean;
-  isNativeTransfer: boolean;
-  isContractCall: boolean;
-  isKnownContract: boolean;
-  knownContractLabel?: string;
-  chainSupported: boolean;
-  localRiskScore: number;
-  localFlags: string[];
-};
+export interface TrustLlmAnalysis {
+  text: string;
+  tier: 'standard' | 'deep';
+  maxOutputTokens: number;
+  truncatedInput?: boolean;
+  provider: 'ollama';
+  model: string;
+}
 
-export type AgentDecision = {
-  shouldQueryPaidApi: boolean;
-  endpoint: "reputation" | "simulation" | "risk-bundle" | null;
-  reason: string;
-  budgetMicrousdc: number;
-  queryPayload: Record<string, unknown> | null;
-};
+export interface TrustPaidRiskEvidence {
+  verified: boolean;
+  reputationScore: number;
+  simulatedOutcome?: string;
+  paidRiskScore: number;
+  paidFlags: string[];
+  explanationSeed: string;
+  llmAnalysis?: TrustLlmAnalysis | null;
+  llmSkippedReason?: string;
+}
 
-export type FinalRiskAssessment = {
-  finalRiskLevel: "low" | "medium" | "high";
-  finalRiskScore: number;
-  reasons: string[];
-  aiSummary: string;
-  paidEvidence?: {
-    reputationScore: number;
-    paidRiskScore: number;
-    paidFlags: string[];
-    simulatedOutcome?: string;
+export interface TrustErrorEnvelope {
+  error: {
+    code: string;
+    message: string;
+    requestId: string;
+    details: Record<string, unknown>;
   };
-};
+}
+
+export interface TrustX402AcceptOption {
+  scheme: 'exact';
+  network: 'avalanche-fuji';
+  maxAmountRequired: string;
+  resource: string;
+  description: string;
+  mimeType: string;
+  payTo: string;
+  asset: string;
+  maxTimeoutSeconds: number;
+}
+
