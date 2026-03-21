@@ -35,6 +35,9 @@
 
         <hardware-wallet-msg :wallet-type="account.walletType" />
 
+        <!-- TRUST Agent Panel -->
+        <trust-panel v-if="!isTrustLoading && trustAssessment" :assessment="trustAssessment" />
+
         <!-- Amount Card -->
         <div
           class="provider-verify-transaction__amount-card"
@@ -208,7 +211,7 @@
       <base-button
         title="Send"
         :click="approve"
-        :disabled="isProcessing || errorMsg != ''"
+        :disabled="isProcessing || errorMsg != '' || isTrustLoading"
       />
     </template>
   </common-popup>
@@ -249,9 +252,14 @@ import AlertIcon from '@action/icons/send/alert-icon.vue';
 import { NetworkNames } from '@enkryptcom/types';
 import { trackSendEvents } from '@/libs/metrics';
 import { SendEventType } from '@/libs/metrics/types';
+import TrustPanel from '@/trust/ui/TrustPanel.vue';
+import { orchestrateRiskAssessment } from '@/trust/agent/orchestrator';
+import { FinalRiskAssessment, PendingTxContext } from '@/trust/types';
 
 const isProcessing = ref(false);
 const isLoading = ref(true);
+const trustAssessment = ref<FinalRiskAssessment | null>(null);
+const isTrustLoading = ref(true);
 const isOpenSelectFee = ref(false);
 const providerVerifyTransactionScrollRef = ref<ComponentPublicInstance>();
 const isOpenData = ref(false);
@@ -382,7 +390,21 @@ onBeforeMount(async () => {
     .catch(e => {
       errorMsg.value = e.message;
     })
-    .finally(() => {
+    .finally(async () => {
+      try {
+        const txContext: PendingTxContext = {
+          chainId: Number(network.value.chainID),
+          from: account.value.address,
+          to: tx.to ? tx.to.toString() : '',
+          value: tx.value ? tx.value.toString() : '0',
+          data: tx.data ? bufferToHex(tx.data) : '0x',
+          origin: Options.value.domain
+        };
+        trustAssessment.value = await orchestrateRiskAssessment(txContext);
+      } catch (err) {
+        console.error("TRUST Engine failed:", err);
+      }
+      isTrustLoading.value = false;
       isLoading.value = false;
     });
 });
