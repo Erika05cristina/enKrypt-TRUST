@@ -1,11 +1,11 @@
 export const FUJI_CHAIN_ID = 43113;
 export const FUJI_NETWORK = 'avalanche-fuji';
 export const RISK_CHECK_RESOURCE = '/api/risk-check';
-/** Precio en USD string para thirdweb settlePayment (USDC en la red indicada). */
-export const TRUST_SETTLE_PRICE_USD = '$0.01';
+export const RISK_CHECK_DEEP_RESOURCE = '/api/risk-check/deep';
 
 export const TRUST_X402_SCHEME = 'exact';
-export const TRUST_X402_PRICE_BASE_UNITS = '10000'; // $0.01 USDC (6 decimals)
+/** Ejemplo $0.001 USDC (6 decimales); el precio real del 402 lo fija el facilitador según env. */
+export const TRUST_X402_PRICE_BASE_UNITS = '1000';
 export const TRUST_X402_MAX_TIMEOUT_SECONDS = 600;
 export const FUJI_USDC_ADDRESS = '0x5425890298aed601595a70AB815c96711a31Bc65';
 

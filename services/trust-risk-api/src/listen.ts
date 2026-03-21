@@ -25,13 +25,18 @@ const handler = createServerHandler({
   publicBaseUrl,
 });
 
+/**
+ * thirdweb wrapFetchWithPayment reintenta con cabeceras extra; el preflight debe permitirlas todas.
+ * Incluye `access-control-expose-headers` (la envía el cliente en el 2º POST — ver fetchWithPayment.js).
+ */
+const CORS_ALLOW_HEADERS =
+  'Content-Type, PAYMENT-SIGNATURE, X-PAYMENT, x-request-id, access-control-expose-headers, Access-Control-Expose-Headers';
+
 const setCors = (res: http.ServerResponse): void => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'Content-Type, PAYMENT-SIGNATURE, X-PAYMENT, x-request-id'
-  );
+  res.setHeader('Access-Control-Allow-Headers', CORS_ALLOW_HEADERS);
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Expose-Headers', 'X-PAYMENT-RESPONSE, x-request-id');
 };
 
 const server = http.createServer(async (req, res) => {
@@ -74,5 +79,11 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(port, () => {
   console.log(`[trust-risk-api] listening ${publicBaseUrl}`);
-  console.log(`[trust-risk-api] POST ${publicBaseUrl}/api/risk-check`);
+  // No confundir con un POST entrante: solo documenta el método y la ruta.
+  console.log(
+    `[trust-risk-api] Paid risk check (standard) → POST ${publicBaseUrl}/api/risk-check`
+  );
+  console.log(
+    `[trust-risk-api] Paid risk check (deep) → POST ${publicBaseUrl}/api/risk-check/deep`
+  );
 });

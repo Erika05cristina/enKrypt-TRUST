@@ -1,16 +1,21 @@
 import { avalancheFuji } from 'thirdweb/chains';
 import { settlePayment, type ThirdwebX402Facilitator } from 'thirdweb/x402';
+import { getDeepSettlePriceUsd, getStandardSettlePriceUsd } from '../config/pricing.js';
 import { validateRiskCheckRequest } from '../contracts.js';
 import {
   ERROR_CODES,
   REQUEST_ID_HEADER,
+  RISK_CHECK_DEEP_RESOURCE,
   RISK_CHECK_RESOURCE,
-  TRUST_SETTLE_PRICE_USD,
   TRUST_X402_MAX_TIMEOUT_SECONDS,
 } from '../constants.js';
-import type { RiskCheckSuccessResponse, TrustErrorEnvelope } from '../types.js';
+import { runOllamaAnalysis, type LlmTier } from '../llm/ollama.js';
+import type { RiskCheckRequest, RiskCheckSuccessResponse, TrustErrorEnvelope } from '../types.js';
+import { evaluatePaidRisk } from '../engine/scoreRisk.js';
 import { createRequestId } from '../utils/requestId.js';
-import { buildPaymentRequirement, readPaymentHeader } from '../x402/payment.js';
+import { readPaymentHeader } from '../x402/payment.js';
+
+export type RiskCheckTier = 'standard' | 'deep';
 
 type RiskCheckRouteConfig = {
   merchantWalletAddress: string;
@@ -68,14 +73,33 @@ type X402V1ErrorBody = {
 const isX402V1ErrorBody = (body: unknown): body is X402V1ErrorBody =>
   Boolean(body && typeof body === 'object' && 'accepts' in (body as object));
 
+const tierConfig = (tier: RiskCheckTier) => {
+  if (tier === 'deep') {
+    return {
+      resourcePath: RISK_CHECK_DEEP_RESOURCE,
+      priceUsd: getDeepSettlePriceUsd(),
+      routeDescription: 'TRUST paid risk check (deep LLM analysis)',
+      llmTier: 'deep' as LlmTier,
+    };
+  }
+  return {
+    resourcePath: RISK_CHECK_RESOURCE,
+    priceUsd: getStandardSettlePriceUsd(),
+    routeDescription: 'TRUST paid risk check',
+    llmTier: 'standard' as LlmTier,
+  };
+};
+
 /**
- * B2: x402 real via thirdweb settlePayment + servidor HTTP en listen.ts.
+ * x402 + motor B3 + opcional Ollama. `tier` define URL de recurso y precio (exact).
  */
 export const handleRiskCheck = async (
   request: Request,
-  config: RiskCheckRouteConfig
+  config: RiskCheckRouteConfig,
+  tier: RiskCheckTier = 'standard'
 ): Promise<Response> => {
   const requestId = createRequestId();
+  const { resourcePath, priceUsd, routeDescription, llmTier } = tierConfig(tier);
 
   let payload: unknown;
   try {
@@ -100,24 +124,52 @@ export const handleRiskCheck = async (
   }
 
   const paymentHeader = readPaymentHeader(request.headers);
-  if (!paymentHeader) {
-    return jsonResponse(
-      toErrorEnvelope(
-        ERROR_CODES.PAYMENT_REQUIRED,
-        'Payment required for risk intelligence',
-        requestId,
-        {
-          x402Version: 1,
-          accepts: [buildPaymentRequirement(config.merchantWalletAddress)],
-        }
-      ),
-      402,
-      requestId
-    );
-  }
-
   const base = config.publicBaseUrl.replace(/\/$/, '');
-  const resourceUrl = `${base}${RISK_CHECK_RESOURCE}`;
+  const resourceUrl = `${base}${resourcePath}`;
+
+  if (!paymentHeader) {
+    try {
+      const facilitatorAccepts = await config.facilitator.accepts({
+        resourceUrl,
+        method: 'POST',
+        network: avalancheFuji,
+        price: priceUsd,
+        scheme: 'exact',
+        x402Version: 1,
+        routeConfig: {
+          description: routeDescription,
+          mimeType: 'application/json',
+          maxTimeoutSeconds: TRUST_X402_MAX_TIMEOUT_SECONDS,
+        },
+        payTo: config.merchantWalletAddress,
+      });
+      const body = facilitatorAccepts.responseBody;
+      return new Response(
+        JSON.stringify({
+          x402Version: body.x402Version ?? 1,
+          error: 'X-PAYMENT header is required',
+          accepts: body.accepts,
+        }),
+        {
+          status: 402,
+          headers: {
+            'content-type': 'application/json',
+            [REQUEST_ID_HEADER]: requestId,
+          },
+        }
+      );
+    } catch (err) {
+      return jsonResponse(
+        toErrorEnvelope(
+          ERROR_CODES.INTERNAL_ERROR,
+          err instanceof Error ? err.message : 'Failed to build x402 payment requirements',
+          requestId
+        ),
+        500,
+        requestId
+      );
+    }
+  }
 
   const settleResult = await settlePayment({
     resourceUrl,
@@ -125,12 +177,12 @@ export const handleRiskCheck = async (
     paymentData: paymentHeader,
     payTo: config.merchantWalletAddress,
     network: avalancheFuji,
-    price: TRUST_SETTLE_PRICE_USD,
+    price: priceUsd,
     scheme: 'exact',
     x402Version: 1,
     facilitator: config.facilitator,
     routeConfig: {
-      description: 'TRUST paid risk check',
+      description: routeDescription,
       mimeType: 'application/json',
       maxTimeoutSeconds: TRUST_X402_MAX_TIMEOUT_SECONDS,
     },
@@ -173,19 +225,23 @@ export const handleRiskCheck = async (
     );
   }
 
-  const riskBody: RiskCheckSuccessResponse = {
-    verified: false,
-    reputationScore: 22,
-    simulatedOutcome: 'Approves unlimited token spending to unknown spender',
-    paidRiskScore: 91,
-    paidFlags: ['UNVERIFIED_CONTRACT', 'UNLIMITED_APPROVAL'],
-    explanationSeed: 'High confidence risk signal',
+  const riskBody = evaluatePaidRisk(payload as RiskCheckRequest);
+  const { analysis, skippedReason } = await runOllamaAnalysis(
+    payload as RiskCheckRequest,
+    riskBody,
+    llmTier
+  );
+
+  const responseBody: RiskCheckSuccessResponse = {
+    ...riskBody,
+    llmAnalysis: analysis,
+    ...(!analysis && skippedReason ? { llmSkippedReason: skippedReason } : {}),
   };
 
   const headers = mergeResponseHeaders(requestId, settleResult.responseHeaders, true);
   headers.set('content-type', 'application/json');
 
-  return new Response(JSON.stringify(riskBody), {
+  return new Response(JSON.stringify(responseBody), {
     status: 200,
     headers,
   });

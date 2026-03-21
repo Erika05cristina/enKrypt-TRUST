@@ -14,6 +14,15 @@ export interface TrustRiskCheckRequest {
   localFlags?: string[];
 }
 
+export interface TrustLlmAnalysis {
+  text: string;
+  tier: 'standard' | 'deep';
+  maxOutputTokens: number;
+  truncatedInput?: boolean;
+  provider: 'ollama';
+  model: string;
+}
+
 export interface TrustPaidRiskEvidence {
   verified: boolean;
   reputationScore: number;
@@ -21,6 +30,8 @@ export interface TrustPaidRiskEvidence {
   paidRiskScore: number;
   paidFlags: string[];
   explanationSeed: string;
+  llmAnalysis?: TrustLlmAnalysis | null;
+  llmSkippedReason?: string;
 }
 
 export interface TrustErrorEnvelope {
@@ -36,8 +47,9 @@ export interface TrustX402AcceptOption {
   scheme: 'exact';
   network: 'avalanche-fuji';
   maxAmountRequired: string;
-  resource: '/api/risk-check';
+  resource: string;
   description: string;
+  mimeType: string;
   payTo: string;
   asset: string;
   maxTimeoutSeconds: number;

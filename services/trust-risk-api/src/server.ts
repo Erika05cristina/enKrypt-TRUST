@@ -1,6 +1,7 @@
 import { createThirdwebClient } from 'thirdweb';
 import { facilitator } from 'thirdweb/x402';
 import { handleRiskCheck } from './routes/riskCheck.js';
+import { RISK_CHECK_DEEP_RESOURCE, RISK_CHECK_RESOURCE } from './constants.js';
 
 export type ServerConfig = {
   merchantWalletAddress: string;
@@ -23,12 +24,28 @@ export const createServerHandler = (config: ServerConfig) => {
   return async (request: Request): Promise<Response> => {
     const url = new URL(request.url);
 
-    if (request.method === 'POST' && url.pathname === '/api/risk-check') {
-      return handleRiskCheck(request, {
-        merchantWalletAddress: config.merchantWalletAddress,
-        publicBaseUrl: config.publicBaseUrl,
-        facilitator: twFacilitator,
-      });
+    if (request.method === 'POST' && url.pathname === RISK_CHECK_RESOURCE) {
+      return handleRiskCheck(
+        request,
+        {
+          merchantWalletAddress: config.merchantWalletAddress,
+          publicBaseUrl: config.publicBaseUrl,
+          facilitator: twFacilitator,
+        },
+        'standard'
+      );
+    }
+
+    if (request.method === 'POST' && url.pathname === RISK_CHECK_DEEP_RESOURCE) {
+      return handleRiskCheck(
+        request,
+        {
+          merchantWalletAddress: config.merchantWalletAddress,
+          publicBaseUrl: config.publicBaseUrl,
+          facilitator: twFacilitator,
+        },
+        'deep'
+      );
     }
 
     return new Response(
