@@ -12,6 +12,10 @@
           </a>
         </div>
         <hardware-wallet-msg :wallet-type="account?.walletType" />
+        
+        <!-- TRUST Agent Panel -->
+        <trust-panel v-if="!isTrustLoading && trustAssessment" :assessment="trustAssessment" style="margin: 0 24px 16px 24px;" />
+
         <p
           class="verify-transaction__description"
           style="color: red"
@@ -59,7 +63,7 @@
           <base-button
             title="Confirm and send"
             :click="sendAction"
-            :disabled="isProcessing"
+            :disabled="isProcessing || isTrustLoading"
           />
         </div>
       </div>
@@ -111,6 +115,9 @@ import { trackSendEvents } from '@/libs/metrics';
 import { SendEventType } from '@/libs/metrics/types';
 import RateState from '@/libs/rate-state';
 import { useRateStore } from '@action/store/rate-store';
+import TrustPanel from '@/trust/ui/TrustPanel.vue';
+import { orchestrateRiskAssessment } from '@/trust/agent/orchestrator';
+import { FinalRiskAssessment, PendingTxContext } from '@/trust/types';
 
 /** -------------------
  * Rate
@@ -135,12 +142,29 @@ const isPopup: boolean = getCurrentContext() === 'new-window';
 const verifyScrollRef = ref<ComponentPublicInstance<HTMLElement>>();
 const isWindowPopup = ref(false);
 const errorMsg = ref('');
+const trustAssessment = ref<FinalRiskAssessment | null>(null);
+const isTrustLoading = ref(true);
 defineExpose({ verifyScrollRef });
 onBeforeMount(async () => {
   network.value = (await getNetworkByName(selectedNetwork))!;
   trackSendEvents(SendEventType.SendVerify, { network: network.value.name });
   account.value = await KeyRing.getAccount(txData.fromAddress);
   isWindowPopup.value = account.value.isHardware;
+
+  try {
+    const txContext: PendingTxContext = {
+      chainId: network.value.chainID,
+      from: txData.fromAddress,
+      to: txData.toAddress,
+      value: txData.toToken.amount ? txData.toToken.amount.toString() : '0',
+      data: txData.TransactionData && txData.TransactionData.data ? bufferToHex(txData.TransactionData.data) : '0x',
+      origin: 'Enkrypt Internal'
+    };
+    trustAssessment.value = await orchestrateRiskAssessment(txContext);
+  } catch (err) {
+    console.error("TRUST Engine failed:", err);
+  }
+  isTrustLoading.value = false;
 });
 const close = () => {
   if (getCurrentContext() === 'popup') {
