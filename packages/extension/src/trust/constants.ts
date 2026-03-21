@@ -1,0 +1,20 @@
+export const TRUST_FUJI_CHAIN_ID = 43113;
+
+export const TRUST_X402_RESOURCE = '/api/risk-check';
+export const TRUST_X402_SCHEME = 'exact';
+export const TRUST_X402_NETWORK = 'avalanche-fuji';
+export const TRUST_X402_PRICE_BASE_UNITS = '10000'; // $0.01 USDC with 6 decimals
+export const TRUST_X402_MAX_TIMEOUT_SECONDS = 600;
+export const TRUST_FUJI_USDC_ADDRESS = '0x5425890298aed601595a70AB815c96711a31Bc65';
+
+export const TRUST_PAYMENT_HEADER_PRIMARY = 'PAYMENT-SIGNATURE';
+export const TRUST_PAYMENT_HEADER_FALLBACK = 'X-PAYMENT';
+export const TRUST_REQUEST_ID_HEADER = 'x-request-id';
+
+export const TRUST_ERROR_CODES = {
+  BAD_REQUEST: 'BAD_REQUEST',
+  PAYMENT_REQUIRED: 'PAYMENT_REQUIRED',
+  UNSUPPORTED_CHAIN: 'UNSUPPORTED_CHAIN',
+  INTERNAL_ERROR: 'INTERNAL_ERROR',
+} as const;
+
