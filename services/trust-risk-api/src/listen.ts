@@ -15,6 +15,9 @@ if (Number.isNaN(port)) {
   throw new Error('PORT must be a number');
 }
 
+/** Bind IPv4 all interfaces so LAN / ngrok / túneles puedan llegar al puerto. */
+const listenHost = process.env.HOST?.trim() || '0.0.0.0';
+
 const publicBaseUrl =
   process.env.TRUST_PUBLIC_BASE_URL?.replace(/\/$/, '') ?? `http://127.0.0.1:${port}`;
 
@@ -77,8 +80,11 @@ const server = http.createServer(async (req, res) => {
   res.end(Buffer.from(await webResponse.arrayBuffer()));
 });
 
-server.listen(port, () => {
-  console.log(`[trust-risk-api] listening ${publicBaseUrl}`);
+server.listen(port, listenHost, () => {
+  console.log(`[trust-risk-api] bound http://${listenHost}:${port} (acepta conexiones externas si el firewall lo permite)`);
+  console.log(
+    `[trust-risk-api] x402 TRUST_PUBLIC_BASE_URL → ${publicBaseUrl} (debe coincidir con la URL pública del túnel, ej. ngrok)`
+  );
   // No confundir con un POST entrante: solo documenta el método y la ruta.
   console.log(
     `[trust-risk-api] Paid risk check (standard) → POST ${publicBaseUrl}/api/risk-check`

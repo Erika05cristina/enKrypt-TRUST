@@ -1,0 +1,102 @@
+{
+  "success200": {
+    "verified": false,
+    "reputationScore": 22,
+    "simulatedOutcome": "Approves unlimited token spending to unknown spender",
+    "paidRiskScore": 91,
+    "paidFlags": [
+      "EXPLORER_SOURCE_VERIFIED",
+      "UNLIMITED_APPROVAL"
+    ],
+    "explanationSeed": "High confidence risk signal",
+    "contractProbe": {
+      "to": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "chainId": 43113,
+      "kind": "contract",
+      "bytecodeLengthBytes": 2048,
+      "deterministicHints": []
+    },
+    "explorerSourceProbe": {
+      "to": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "chainId": 43113,
+      "sourceVerified": true,
+      "contractName": "ExampleToken",
+      "compilerVersion": "v0.8.20+commit.a1b79de6",
+      "sourceLengthChars": 4200
+    },
+    "llmAnalysis": {
+      "text": "High risk approval pattern.\n• Verify spender and token\nVerdict: malicious\nFlags: unlimited_approval, unverified_contract",
+      "tier": "standard",
+      "maxOutputTokens": 256,
+      "truncatedInput": false,
+      "provider": "ollama",
+      "model": "llama3.2",
+      "verdict": "malicious",
+      "flags": [
+        "unlimited_approval",
+        "unverified_contract"
+      ],
+      "summary": "High risk approval pattern.",
+      "disclaimer": "This AI assessment is heuristic only; it is not a security guarantee nor a substitute for professional audit.",
+      "bytecodeTruncatedForLlm": false
+    },
+    "_contractProbeNote": "Si TRUST_FUJI_RPC_URL no está definido: probeError no_rpc_url; sin kind/bytecodeLengthBytes",
+    "_explorerNote": "Sin fuente verificada: sourceVerified false + paidFlags incluye EXPLORER_SOURCE_NOT_VERIFIED; el Solidity no va en el JSON 200 (solo en prompt LLM)",
+    "_llmNote": "llmAnalysis solo si TRUST_LLM_ENABLED=true y Ollama OK; salida JSON con verdict/flags/summary; si no, llmSkippedReason opcional"
+  },
+  "errorEnvelope": {
+    "error": {
+      "code": "STRING_ENUM_CODE",
+      "message": "Human-readable message",
+      "requestId": "req_123",
+      "details": {}
+    }
+  },
+  "paymentRequired402Standard": {
+    "x402Version": 1,
+    "error": "X-PAYMENT header is required",
+    "accepts": [
+      {
+        "scheme": "exact",
+        "network": "avalanche-fuji",
+        "maxAmountRequired": "1000",
+        "resource": "http://127.0.0.1:8787/api/risk-check",
+        "description": "TRUST paid risk check",
+        "mimeType": "application/json",
+        "payTo": "0xMerchantWalletAddressHere",
+        "asset": "0x5425890298aed601595a70AB815c96711a31Bc65",
+        "maxTimeoutSeconds": 600
+      }
+    ],
+    "_note": "maxAmountRequired depende de TRUST_SETTLE_PRICE_USD (ej. $0.001 → 1000); cabecera x-request-id"
+  },
+  "paymentRequired402Deep": {
+    "x402Version": 1,
+    "error": "X-PAYMENT header is required",
+    "accepts": [
+      {
+        "scheme": "exact",
+        "network": "avalanche-fuji",
+        "maxAmountRequired": "20000",
+        "resource": "http://127.0.0.1:8787/api/risk-check/deep",
+        "description": "TRUST paid risk check (deep LLM analysis)",
+        "mimeType": "application/json",
+        "payTo": "0xMerchantWalletAddressHere",
+        "asset": "0x5425890298aed601595a70AB815c96711a31Bc65",
+        "maxTimeoutSeconds": 600
+      }
+    ],
+    "_note": "maxAmountRequired depende de TRUST_SETTLE_DEEP_PRICE_USD (ej. $0.02 → 20000)"
+  },
+  "unsupportedChain422": {
+    "error": {
+      "code": "UNSUPPORTED_CHAIN",
+      "message": "Only Avalanche Fuji (43113) is supported in MVP",
+      "requestId": "req_bad_chain",
+      "details": {
+        "expectedChainId": 43113,
+        "receivedChainId": 1
+      }
+    }
+  }
+}

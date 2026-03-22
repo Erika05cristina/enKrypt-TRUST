@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { isLlmEnabled, runOllamaAnalysis } from './ollama.js';
+import { AI_ASSESSMENT_DISCLAIMER, isLlmEnabled, runOllamaAnalysis } from './ollama.js';
 import type { RiskCheckRequest, RiskCheckSuccessResponse } from '../types.js';
+import type { ContractProbeRun } from '../chain/getCode.js';
+import type { ExplorerSourceRun } from '../chain/explorerSource.js';
 
 const baseReq: RiskCheckRequest = {
   chainId: 43113,
@@ -17,6 +19,15 @@ const baseRisk: RiskCheckSuccessResponse = {
   simulatedOutcome: 'Empty calldata with zero value',
   explanationSeed: 'Low surface transaction',
 };
+
+const sampleProbe = (): ContractProbeRun => ({
+  public: {
+    to: '0x1111111111111111111111111111111111111111',
+    chainId: 43113,
+    kind: 'eoa',
+    bytecodeLengthBytes: 0,
+  },
+});
 
 describe('isLlmEnabled', () => {
   const env = { ...process.env };
@@ -56,26 +67,145 @@ describe('runOllamaAnalysis', () => {
     process.env = { ...env };
   });
 
-  it('returns analysis when Ollama responds 200', async () => {
+  it('returns structured analysis when Ollama returns valid JSON', async () => {
+    const payload = {
+      verdict: 'caution',
+      flags: ['unverified_interaction'],
+      summary: 'Exercise caution before signing.',
+      bullets: ['Verify the recipient'],
+    };
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({ message: { content: '  • Risk note  \n' } }),
+      json: async () => ({
+        message: { content: JSON.stringify(payload) },
+      }),
     });
 
-    const { analysis, skippedReason } = await runOllamaAnalysis(baseReq, baseRisk, 'standard');
+    const { analysis, skippedReason } = await runOllamaAnalysis(
+      baseReq,
+      baseRisk,
+      'standard',
+      { contract: sampleProbe() }
+    );
 
     expect(skippedReason).toBeUndefined();
     expect(analysis).toMatchObject({
-      text: '• Risk note',
+      verdict: 'caution',
+      flags: ['unverified_interaction'],
+      summary: 'Exercise caution before signing.',
       tier: 'standard',
       provider: 'ollama',
       model: 'test-model',
+      disclaimer: AI_ASSESSMENT_DISCLAIMER,
     });
+    expect(analysis?.text).toContain('Verdict: caution');
+    expect(analysis?.text).toContain('Verify the recipient');
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [, init] = fetchMock.mock.calls[0];
     const body = JSON.parse((init as RequestInit).body as string);
     expect(body.model).toBe('test-model');
     expect(body.stream).toBe(false);
+    expect(body.format).toBe('json');
+    expect(body.messages[0].role).toBe('system');
+  });
+
+  it('returns raw text with rawStructuredError when JSON parse fails', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ message: { content: 'not json at all' } }),
+    });
+
+    const { analysis } = await runOllamaAnalysis(baseReq, baseRisk, 'standard', {
+      contract: sampleProbe(),
+    });
+
+    expect(analysis?.text).toBe('not json at all');
+    expect(analysis?.rawStructuredError).toBe('invalid_or_non_json_output');
+    expect(analysis?.disclaimer).toBe(AI_ASSESSMENT_DISCLAIMER);
+  });
+
+  it('includes bytecode in prompt for deep tier when probe has code', async () => {
+    process.env.TRUST_LLM_PREFER_SOURCE_OVER_BYTECODE = 'false';
+    const longCode = `0x${'ab'.repeat(3000)}`;
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () =>
+        ({
+          message: {
+            content: JSON.stringify({
+              verdict: 'unknown',
+              flags: [],
+              summary: 'x',
+              bullets: [],
+            }),
+          },
+        }) as { message: { content: string } },
+    });
+
+    await runOllamaAnalysis(baseReq, baseRisk, 'deep', {
+      contract: {
+        public: {
+          to: baseReq.to,
+          chainId: 43113,
+          kind: 'contract',
+          bytecodeLengthBytes: 3000,
+        },
+        bytecodeHex: longCode,
+      },
+    });
+
+    const [, init] = fetchMock.mock.calls[0];
+    const body = JSON.parse((init as RequestInit).body as string);
+    const user = body.messages.find((m: { role: string }) => m.role === 'user')?.content as string;
+    expect(user).toContain('bytecodeHex');
+    expect(user).toContain('0xabab');
+  });
+
+  it('includes verified Solidity and omits bytecode when prefer source (default)', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        message: {
+          content: JSON.stringify({
+            verdict: 'safe',
+            flags: [],
+            summary: 'ok',
+            bullets: [],
+          }),
+        },
+      }),
+    });
+
+    const src = 'pragma solidity ^0.8.0;\ncontract X { function f() external {} }';
+    const explorer: ExplorerSourceRun = {
+      public: {
+        to: baseReq.to,
+        chainId: 43113,
+        sourceVerified: true,
+        sourceLengthChars: src.length,
+        contractName: 'X',
+      },
+      sourceCodeForLlm: src,
+    };
+
+    await runOllamaAnalysis(baseReq, baseRisk, 'deep', {
+      contract: {
+        public: {
+          to: baseReq.to,
+          chainId: 43113,
+          kind: 'contract',
+          bytecodeLengthBytes: 2,
+        },
+        bytecodeHex: '0xffaa',
+      },
+      explorer,
+    });
+
+    const [, init] = fetchMock.mock.calls[0];
+    const body = JSON.parse((init as RequestInit).body as string);
+    const user = body.messages.find((m: { role: string }) => m.role === 'user')?.content as string;
+    expect(user).toContain('pragma solidity');
+    expect(user).not.toContain('0xffaa');
   });
 
   it('returns skippedReason on HTTP error', async () => {
@@ -85,7 +215,9 @@ describe('runOllamaAnalysis', () => {
       text: async () => 'boom',
     });
 
-    const { analysis, skippedReason } = await runOllamaAnalysis(baseReq, baseRisk, 'standard');
+    const { analysis, skippedReason } = await runOllamaAnalysis(baseReq, baseRisk, 'standard', {
+      contract: sampleProbe(),
+    });
 
     expect(analysis).toBeNull();
     expect(skippedReason).toContain('500');
@@ -93,7 +225,9 @@ describe('runOllamaAnalysis', () => {
 
   it('returns skippedReason when LLM disabled', async () => {
     process.env.TRUST_LLM_ENABLED = 'false';
-    const { analysis, skippedReason } = await runOllamaAnalysis(baseReq, baseRisk, 'deep');
+    const { analysis, skippedReason } = await runOllamaAnalysis(baseReq, baseRisk, 'deep', {
+      contract: sampleProbe(),
+    });
     expect(analysis).toBeNull();
     expect(skippedReason).toContain('disabled');
     expect(fetchMock).not.toHaveBeenCalled();

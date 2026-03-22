@@ -7,6 +7,8 @@ API para riesgo de transacción con pago x402 usando [thirdweb `settlePayment`](
 
 Mismo JSON de cuerpo en ambos; el `resource` en x402 debe coincidir con la ruta llamada.
 
+**Integración (otro equipo / Persona A):** [docs/trust/PERSON_A_INTEGRATION.md](../../docs/trust/PERSON_A_INTEGRATION.md).
+
 ## Requisitos
 
 - Node 18+
@@ -26,9 +28,15 @@ cp .env.example .env
 
 **Importante:** `TRUST_PUBLIC_BASE_URL` debe ser **exactamente** la URL base que usara el cliente al llamar al API (incluye host y puerto). Si llamas con `http://127.0.0.1:8787`, no uses `http://localhost:8787` en el env.
 
+**Exponer con ngrok / red local:** el servidor escucha por defecto en **`0.0.0.0`** (`HOST` en `.env`, ej. `HOST=127.0.0.1` solo loopback). Cuando uses un túnel, pon `TRUST_PUBLIC_BASE_URL` igual a la URL pública del túnel (ej. `https://xxxx.ngrok-free.app` sin barra final); si no coincide, x402 puede fallar en el segundo `POST`.
+
 **Precios:** `TRUST_SETTLE_PRICE_USD` y `TRUST_SETTLE_DEEP_PRICE_USD` (ver `.env.example`). Montos muy pequeños pueden ser rechazados por el facilitador; sube el valor solo en env.
 
-**LLM (Ollama):** con `TRUST_LLM_ENABLED=true` y Ollama en marcha, la respuesta `200` puede incluir `llmAnalysis` además del motor B3. Si Ollama falla, el `200` sigue con B3 y `llmSkippedReason`.
+**RPC Fuji (`eth_getCode`):** con `TRUST_FUJI_RPC_URL` apuntando a un JSON-RPC de Avalanche Fuji, cada `200` incluye `contractProbe` (EOA vs contrato, tamaño de bytecode, hints débiles). Sin URL, `contractProbe.probeError` será `no_rpc_url` y el flujo sigue.
+
+**Explorador (Routescan, API compatible Etherscan):** por defecto se consulta la URL pública de Fuji (`TRUST_EXPLORER_API_URL` opcional). Si el destino es **contrato** y **no** hay fuente verificada en el explorador, el motor B3 añade **`EXPLORER_SOURCE_NOT_VERIFIED`** (sospecha determinista). Si hay fuente verificada, **`EXPLORER_SOURCE_VERIFIED`** y se quita `UNVERIFIED_CONTRACT`. El **Solidity completo** de la API se pasa al LLM (límite alto `TRUST_LLM_SOLIDITY_MAX_CHARS`, default 1M); con fuente verificada el bytecode **no** se manda al modelo salvo `TRUST_LLM_PREFER_SOURCE_OVER_BYTECODE=false`. Desactivar consultas: `TRUST_EXPLORER_DISABLED=true`.
+
+**LLM (Ollama):** con `TRUST_LLM_ENABLED=true` y Ollama en marcha, la respuesta `200` incluye `llmAnalysis` con **JSON estructurado** (`verdict`, `flags`, `summary`, más `text` legible). Calldata / bytecode / Solidity solo se truncan si superan los límites de env (por defecto muy altos). Si Ollama falla, el `200` sigue con B3 y `llmSkippedReason`. La IA **no** sustituye auditoría humana (ver `disclaimer` en `llmAnalysis`).
 
 ## Arrancar
 
@@ -132,7 +140,7 @@ npm run test
 npm run test:watch
 ```
 
-Cubre: validacion de request (`contracts`), parsing de calldata (`approve`, nativo, selector), motor `evaluatePaidRisk` con fixtures por env, pricing (`usdPriceToUsdcBaseUnits`), Ollama (`ollama.test.ts` con fetch mock).
+Cubre: validacion de request (`contracts`), parsing de calldata (`approve`, nativo, selector), motor `evaluatePaidRisk` con fixtures por env, pricing (`usdPriceToUsdcBaseUnits`), `eth_getCode` / `contractProbe` (`chain/getCode.test.ts`), Ollama (`ollama.test.ts` con fetch mock).
 
 ## Scripts
 

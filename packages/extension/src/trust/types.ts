@@ -14,6 +14,45 @@ export interface TrustRiskCheckRequest {
   localFlags?: string[];
 }
 
+export type TrustAiVerdict = 'safe' | 'caution' | 'malicious' | 'unknown';
+
+export type TrustContractProbeError =
+  | 'no_rpc_url'
+  | 'unsupported_chain'
+  | 'invalid_address'
+  | 'rpc_unavailable'
+  | 'invalid_response'
+  | 'timeout';
+
+export interface TrustContractProbe {
+  to: string;
+  chainId: number;
+  kind?: 'eoa' | 'contract';
+  bytecodeLengthBytes?: number;
+  probeError?: TrustContractProbeError;
+  deterministicHints?: string[];
+}
+
+export type TrustExplorerLookupReason =
+  | 'unsupported_chain'
+  | 'not_a_contract'
+  | 'invalid_address'
+  | 'explorer_disabled';
+
+export type TrustExplorerProbeError = 'api_error' | 'timeout' | 'invalid_response';
+
+export interface TrustExplorerSourceProbe {
+  to: string;
+  chainId: number;
+  sourceVerified?: boolean;
+  contractName?: string;
+  compilerVersion?: string;
+  sourceLengthChars?: number;
+  probeError?: TrustExplorerProbeError;
+  lookupReason?: TrustExplorerLookupReason;
+  httpStatus?: number;
+}
+
 export interface TrustLlmAnalysis {
   text: string;
   tier: 'standard' | 'deep';
@@ -21,6 +60,13 @@ export interface TrustLlmAnalysis {
   truncatedInput?: boolean;
   provider: 'ollama';
   model: string;
+  verdict?: TrustAiVerdict;
+  flags?: string[];
+  summary?: string;
+  disclaimer?: string;
+  bytecodeTruncatedForLlm?: boolean;
+  solidityTruncatedForLlm?: boolean;
+  rawStructuredError?: string;
 }
 
 export interface TrustPaidRiskEvidence {
@@ -30,6 +76,8 @@ export interface TrustPaidRiskEvidence {
   paidRiskScore: number;
   paidFlags: string[];
   explanationSeed: string;
+  contractProbe?: TrustContractProbe;
+  explorerSourceProbe?: TrustExplorerSourceProbe;
   llmAnalysis?: TrustLlmAnalysis | null;
   llmSkippedReason?: string;
 }

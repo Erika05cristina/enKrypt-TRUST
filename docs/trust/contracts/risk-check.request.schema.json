@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trust.local/schemas/risk-check.request.schema.json",
+  "title": "TRUST Risk Check Request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "chainId",
+    "to",
+    "data",
+    "value"
+  ],
+  "properties": {
+    "chainId": {
+      "type": "integer",
+      "const": 43113,
+      "description": "Solo Avalanche Fuji para MVP"
+    },
+    "to": {
+      "type": "string",
+      "pattern": "^0x[a-fA-F0-9]{40}$"
+    },
+    "data": {
+      "type": "string",
+      "pattern": "^0x([a-fA-F0-9]{2})*$"
+    },
+    "value": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "description": "Decimal string no negativo"
+    },
+    "origin": {
+      "type": "string",
+      "format": "uri"
+    },
+    "localFlags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Z][A-Z0-9_]*$"
+      },
+      "uniqueItems": true
+    },
+    "clientRef": {
+      "type": "string",
+      "description": "Opcional; idempotencia / dedupe en cliente (ignorado por el motor B3)"
+    }
+  }
+}
+

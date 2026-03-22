@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { RiskCheckRequest } from '../types.js';
-import { evaluatePaidRisk } from './scoreRisk.js';
+import type { ExplorerSourceRun } from '../chain/explorerSource.js';
+import type { RiskCheckRequest, TrustContractProbe } from '../types.js';
+import { evaluatePaidRisk, mergeExplorerIntoPaidRisk } from './scoreRisk.js';
 
 const clearFixtureEnv = (): void => {
   delete process.env.TRUST_FIXTURE_TRUSTED_CONTRACTS;
@@ -117,5 +118,68 @@ describe('evaluatePaidRisk', () => {
     const a = evaluatePaidRisk(baseReq({ data })).paidFlags.join(',');
     const b = evaluatePaidRisk(baseReq({ data })).paidFlags.join(',');
     expect(a).toBe(b);
+  });
+});
+
+describe('mergeExplorerIntoPaidRisk', () => {
+  beforeEach(() => {
+    clearFixtureEnv();
+  });
+  afterEach(() => {
+    clearFixtureEnv();
+  });
+
+  const probeContract = (to: string): TrustContractProbe => ({
+    to,
+    chainId: 43113,
+    kind: 'contract',
+    bytecodeLengthBytes: 10,
+  });
+
+  const makeBaseRisk = () =>
+    evaluatePaidRisk(baseReq({ to: '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' }));
+
+  it('adds EXPLORER_SOURCE_NOT_VERIFIED when explorer has no source', () => {
+    const baseRisk = makeBaseRisk();
+    const explorer: ExplorerSourceRun = {
+      public: {
+        to: '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        chainId: 43113,
+        sourceVerified: false,
+        sourceLengthChars: 0,
+      },
+    };
+    const m = mergeExplorerIntoPaidRisk(baseRisk, probeContract(explorer.public.to), explorer);
+    expect(m.paidFlags).toContain('EXPLORER_SOURCE_NOT_VERIFIED');
+    expect(m.paidRiskScore).toBeGreaterThanOrEqual(baseRisk.paidRiskScore);
+  });
+
+  it('adds EXPLORER_SOURCE_VERIFIED and drops UNVERIFIED_CONTRACT when verified', () => {
+    const baseRisk = makeBaseRisk();
+    const explorer: ExplorerSourceRun = {
+      public: {
+        to: '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        chainId: 43113,
+        sourceVerified: true,
+        sourceLengthChars: 42,
+        contractName: 'Demo',
+      },
+    };
+    const m = mergeExplorerIntoPaidRisk(baseRisk, probeContract(explorer.public.to), explorer);
+    expect(m.paidFlags).toContain('EXPLORER_SOURCE_VERIFIED');
+    expect(m.paidFlags).not.toContain('UNVERIFIED_CONTRACT');
+  });
+
+  it('no-op when lookupReason is set', () => {
+    const baseRisk = makeBaseRisk();
+    const explorer: ExplorerSourceRun = {
+      public: {
+        to: '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        chainId: 43113,
+        lookupReason: 'not_a_contract',
+      },
+    };
+    const m = mergeExplorerIntoPaidRisk(baseRisk, probeContract(explorer.public.to), explorer);
+    expect(m).toEqual(baseRisk);
   });
 });

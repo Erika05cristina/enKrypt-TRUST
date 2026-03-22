@@ -1,4 +1,5 @@
-import type { RiskCheckRequest, RiskCheckSuccessResponse } from '../types.js';
+import type { ExplorerSourceRun } from '../chain/explorerSource.js';
+import type { RiskCheckRequest, RiskCheckSuccessResponse, TrustContractProbe } from '../types.js';
 import {
   decodeApprove,
   parseCalldata,
@@ -119,5 +120,69 @@ export const evaluatePaidRisk = (req: RiskCheckRequest): RiskCheckSuccessRespons
     paidFlags: uniqSorted(paidFlags),
     simulatedOutcome,
     explanationSeed,
+  };
+};
+
+/**
+ * Ajusta flags/scores tras consultar el explorador (Fuji). No cambia `verified` de fixtures B3.
+ * Si el contrato no tiene fuente verificada en el explorador → señal determinista de sospecha.
+ */
+export const mergeExplorerIntoPaidRisk = (
+  res: RiskCheckSuccessResponse,
+  probe: TrustContractProbe,
+  explorer: ExplorerSourceRun
+): RiskCheckSuccessResponse => {
+  const pub = explorer.public;
+  if (pub.lookupReason || probe.kind !== 'contract') {
+    return res;
+  }
+
+  /** Fixtures explícitos tienen prioridad; no mezclar scores con el explorador. */
+  if (
+    res.paidFlags.includes('KNOWN_MALICIOUS_TARGET') ||
+    res.paidFlags.includes('KNOWN_SAFE_TARGET')
+  ) {
+    return res;
+  }
+
+  let paidFlags = [...res.paidFlags];
+  let paidRiskScore = res.paidRiskScore;
+  let reputationScore = res.reputationScore;
+  let explanationSeed = res.explanationSeed;
+
+  if (pub.probeError) {
+    paidFlags.push('EXPLORER_LOOKUP_FAILED');
+    paidRiskScore = clamp(paidRiskScore + 8, 0, 100);
+    reputationScore = clamp(reputationScore - 5, 0, 100);
+    explanationSeed = `${explanationSeed} Explorer source lookup failed.`;
+    return {
+      ...res,
+      paidFlags: uniqSorted(paidFlags),
+      paidRiskScore,
+      reputationScore,
+      explanationSeed,
+    };
+  }
+
+  if (pub.sourceVerified) {
+    paidFlags = paidFlags.filter((f) => f !== 'UNVERIFIED_CONTRACT');
+    paidFlags.push('EXPLORER_SOURCE_VERIFIED');
+    paidRiskScore = clamp(paidRiskScore - 10, 0, 100);
+    reputationScore = clamp(reputationScore + 12, 0, 100);
+    explanationSeed = `${explanationSeed} Verified Solidity published on explorer.`;
+  } else {
+    paidFlags.push('EXPLORER_SOURCE_NOT_VERIFIED');
+    paidRiskScore = clamp(paidRiskScore + 20, 0, 100);
+    reputationScore = clamp(reputationScore - 18, 0, 100);
+    explanationSeed = `${explanationSeed} No verified Solidity on explorer — elevated suspicion.`;
+  }
+
+  return {
+    ...res,
+    paidFlags: uniqSorted(paidFlags),
+    paidRiskScore,
+    reputationScore,
+    explanationSeed,
+    verified: res.verified,
   };
 };

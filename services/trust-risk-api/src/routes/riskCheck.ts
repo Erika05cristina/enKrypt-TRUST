@@ -9,9 +9,11 @@ import {
   RISK_CHECK_RESOURCE,
   TRUST_X402_MAX_TIMEOUT_SECONDS,
 } from '../constants.js';
+import { runContractProbe } from '../chain/getCode.js';
+import { runExplorerSourceLookup } from '../chain/explorerSource.js';
 import { runOllamaAnalysis, type LlmTier } from '../llm/ollama.js';
 import type { RiskCheckRequest, RiskCheckSuccessResponse, TrustErrorEnvelope } from '../types.js';
-import { evaluatePaidRisk } from '../engine/scoreRisk.js';
+import { evaluatePaidRisk, mergeExplorerIntoPaidRisk } from '../engine/scoreRisk.js';
 import { createRequestId } from '../utils/requestId.js';
 import { readPaymentHeader } from '../x402/payment.js';
 
@@ -225,15 +227,20 @@ export const handleRiskCheck = async (
     );
   }
 
-  const riskBody = evaluatePaidRisk(payload as RiskCheckRequest);
-  const { analysis, skippedReason } = await runOllamaAnalysis(
-    payload as RiskCheckRequest,
-    riskBody,
-    llmTier
-  );
+  const req = payload as RiskCheckRequest;
+  const riskBase = evaluatePaidRisk(req);
+  const contractRun = await runContractProbe(req);
+  const explorerRun = await runExplorerSourceLookup(req, contractRun.public);
+  const riskBody = mergeExplorerIntoPaidRisk(riskBase, contractRun.public, explorerRun);
+  const { analysis, skippedReason } = await runOllamaAnalysis(req, riskBody, llmTier, {
+    contract: contractRun,
+    explorer: explorerRun,
+  });
 
   const responseBody: RiskCheckSuccessResponse = {
     ...riskBody,
+    contractProbe: contractRun.public,
+    explorerSourceProbe: explorerRun.public,
     llmAnalysis: analysis,
     ...(!analysis && skippedReason ? { llmSkippedReason: skippedReason } : {}),
   };
