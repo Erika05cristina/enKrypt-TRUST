@@ -17,10 +17,7 @@
 
     <header class="hero">
       <div class="hero-content">
-        <div class="badge-row">
-          <span class="badge">Avalanche 🔺 + ThirdWeb x402</span>
-          <span class="badge badge-green">EIP-8004 agent identity</span>
-        </div>
+        <div class="badge">Avalanche 🔺 + ThirdWeb x402</div>
         <!-- Main Logo Integration -->
         <img src="/logo.png" alt="T.R.U.S.T Logo" style="width: 380px; border-radius: 104px; border: 1px solid rgba(255, 255, 255, 0.08); margin-bottom: 25px; display: block; box-shadow: 0 15px 35px rgba(139, 92, 246, 0.25); object-fit: cover;" />
         <h1 class="glitch" data-text="The First In-Wallet AI Security Agent">The First In-Wallet <br><span class="highlight">AI Security Agent</span></h1>
@@ -83,12 +80,6 @@
           <h3>Deep LLM Probes</h3>
           <p>Our backend fetches unverified bytecode and feeds it to a dedicated LLM securely. It analyzes functions, detects unlimited approvals, and returns a human-readable verdict.</p>
         </div>
-
-        <div class="glass-card feature-card">
-          <div class="feature-icon">🪪</div>
-          <h3>ERC-8004 trustless agents</h3>
-          <p>The risk API publishes <strong>agent-registration.json</strong> and can echo <strong>erc8004</strong> metadata on paid responses so wallets and indexers recognize the agent on IdentityRegistry—without the server custodying registration keys.</p>
-        </div>
       </div>
     </section>
 
@@ -111,12 +102,6 @@
           <div class="step-num">3</div>
           <h4>x402 Handshake & AI Analysis</h4>
           <p>The Extension hits the backend. The backend replies with <strong>402 Payment Required</strong>. The extension automatically pays. The backend then downloads the Blockchain Bytecode, passes it to the AI, and returns the verdict to the UI!</p>
-        </div>
-        <div class="timeline-arrow">⬇</div>
-        <div class="glass-card step">
-          <div class="step-num">4</div>
-          <h4>Discoverable agent (EIP-8004)</h4>
-          <p>Successful paid responses may include <strong>erc8004</strong> fields; the API also serves a stable registration document for on-chain <strong>setAgentURI</strong>. Operators register the agent on Fuji’s IdentityRegistry—x402 handles payment, ERC-8004 handles identity.</p>
         </div>
       </div>
     </section>
@@ -184,8 +169,7 @@
 
     <footer>
       <p>Built with 🩵 for the Hackathon</p>
-      <p class="tech-stack">Vue 3 • TypeScript • Avalanche • ThirdWeb x402 • EIP-8004 • AI LLMs</p>
-      <p class="footer-docs"><a href="https://github.com/Erika05cristina/enKrypt-TRUST/blob/main/docs/trust/technical.md" target="_blank">Full documentation →</a></p>
+      <p class="tech-stack">Vue 3 • TypeScript • Avalanche • ThirdWeb • AI LLMs</p>
     </footer>
   </div>
 </template>
@@ -284,21 +268,8 @@
   font-weight: 600;
   transition: color 0.3s ease;
 }
-.nav-links a:hover,
-.nav-links a.router-link-active {
+.nav-links a:hover {
   color: var(--primary);
-}
-.footer-docs {
-  margin-top: 12px;
-}
-.footer-docs a {
-  color: var(--primary);
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 15px;
-}
-.footer-docs a:hover {
-  text-decoration: underline;
 }
 
 /* Hero Section */
@@ -318,12 +289,6 @@
   max-width: 600px;
 }
 
-.badge-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 20px;
-}
 .badge {
   display: inline-block;
   padding: 6px 12px;
@@ -333,11 +298,7 @@
   border-radius: 20px;
   font-size: 14px;
   font-weight: 600;
-}
-.badge-green {
-  background: rgba(16, 185, 129, 0.12);
-  border-color: rgba(16, 185, 129, 0.35);
-  color: #6ee7b7;
+  margin-bottom: 20px;
 }
 
 h1 {
