@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { ExplorerSourceRun } from '../chain/explorerSource.js';
 import type { RiskCheckRequest, TrustContractProbe } from '../types.js';
-import { evaluatePaidRisk, mergeExplorerIntoPaidRisk } from './scoreRisk.js';
+import {
+  evaluatePaidRisk,
+  mergeExplorerIntoPaidRisk,
+  mergeSolidityStaticIntoPaidRisk,
+} from './scoreRisk.js';
 
 const clearFixtureEnv = (): void => {
   delete process.env.TRUST_FIXTURE_TRUSTED_CONTRACTS;
@@ -181,5 +185,98 @@ describe('mergeExplorerIntoPaidRisk', () => {
     };
     const m = mergeExplorerIntoPaidRisk(baseRisk, probeContract(explorer.public.to), explorer);
     expect(m).toEqual(baseRisk);
+  });
+});
+
+describe('mergeSolidityStaticIntoPaidRisk', () => {
+  beforeEach(() => {
+    clearFixtureEnv();
+  });
+  afterEach(() => {
+    clearFixtureEnv();
+  });
+
+  const evilSource = `
+    contract EvilVault {
+      function retirar() external {
+        uint256 monto = 1;
+        (bool ok, ) = msg.sender.call{value: monto}("");
+      }
+      function x() external { require(tx.origin == msg.sender, "x"); }
+    }
+  `;
+
+  const safeSource = `
+    import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+    contract S is ReentrancyGuard {
+      function w() external nonReentrant {
+        (bool ok, ) = msg.sender.call{value: 1}("");
+      }
+    }
+  `;
+
+  it('diverges paidRiskScore for evil vs safe after explorer verified', () => {
+    const probe = (to: string): TrustContractProbe => ({
+      to,
+      chainId: 43113,
+      kind: 'contract',
+      bytecodeLengthBytes: 100,
+    });
+    const addr = '0xcccccccccccccccccccccccccccccccccccccccc';
+    const base = evaluatePaidRisk(baseReq({ to: addr }));
+    const explorerVerified: ExplorerSourceRun = {
+      public: {
+        to: addr,
+        chainId: 43113,
+        sourceVerified: true,
+        sourceLengthChars: 100,
+      },
+      sourceCodeForLlm: evilSource,
+    };
+    const afterEx = mergeExplorerIntoPaidRisk(base, probe(addr), explorerVerified);
+    const evil = mergeSolidityStaticIntoPaidRisk(
+      afterEx,
+      explorerVerified.sourceCodeForLlm,
+      explorerVerified.public
+    );
+
+    const explorerSafe: ExplorerSourceRun = {
+      public: { ...explorerVerified.public, to: addr },
+      sourceCodeForLlm: safeSource,
+    };
+    const afterExSafe = mergeExplorerIntoPaidRisk(base, probe(addr), explorerSafe);
+    const good = mergeSolidityStaticIntoPaidRisk(
+      afterExSafe,
+      explorerSafe.sourceCodeForLlm,
+      explorerSafe.public
+    );
+
+    expect(evil.paidRiskScore).toBeGreaterThan(good.paidRiskScore);
+    expect(evil.paidFlags).toContain('SOLIDITY_TX_ORIGIN_RISK');
+    expect(good.paidFlags).toContain('SOLIDITY_REENTRANCY_MITIGATION');
+  });
+
+  it('no-op when sourceVerified is false', () => {
+    const base = evaluatePaidRisk(baseReq({ to: '0xdddddddddddddddddddddddddddddddddddddddd' }));
+    const explorer: ExplorerSourceRun = {
+      public: {
+        to: '0xdddddddddddddddddddddddddddddddddddddddd',
+        chainId: 43113,
+        sourceVerified: false,
+        sourceLengthChars: 0,
+      },
+      sourceCodeForLlm: evilSource,
+    };
+    const after = mergeExplorerIntoPaidRisk(
+      base,
+      {
+        to: explorer.public.to,
+        chainId: 43113,
+        kind: 'contract',
+        bytecodeLengthBytes: 10,
+      },
+      explorer
+    );
+    expect(mergeSolidityStaticIntoPaidRisk(after, evilSource, explorer.public)).toEqual(after);
   });
 });

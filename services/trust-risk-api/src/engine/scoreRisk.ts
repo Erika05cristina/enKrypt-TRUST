@@ -1,5 +1,11 @@
 import type { ExplorerSourceRun } from '../chain/explorerSource.js';
-import type { RiskCheckRequest, RiskCheckSuccessResponse, TrustContractProbe } from '../types.js';
+import type {
+  RiskCheckRequest,
+  RiskCheckSuccessResponse,
+  TrustContractProbe,
+  TrustExplorerSourceProbe,
+} from '../types.js';
+import { scanVerifiedSolidity } from './solidityStaticScan.js';
 import {
   decodeApprove,
   parseCalldata,
@@ -180,6 +186,51 @@ export const mergeExplorerIntoPaidRisk = (
   return {
     ...res,
     paidFlags: uniqSorted(paidFlags),
+    paidRiskScore,
+    reputationScore,
+    explanationSeed,
+    verified: res.verified,
+  };
+};
+
+/**
+ * Ajusta scores/flags leyendo el Solidity verificado (heurísticas locales).
+ * Solo corre cuando hay fuente no vacía y el explorador marcó `sourceVerified`.
+ */
+export const mergeSolidityStaticIntoPaidRisk = (
+  res: RiskCheckSuccessResponse,
+  sourceCode: string | undefined,
+  explorerPublic: TrustExplorerSourceProbe
+): RiskCheckSuccessResponse => {
+  if (explorerPublic.lookupReason || !explorerPublic.sourceVerified) {
+    return res;
+  }
+  const trimmed = sourceCode?.trim();
+  if (!trimmed) {
+    return res;
+  }
+
+  if (
+    res.paidFlags.includes('KNOWN_MALICIOUS_TARGET') ||
+    res.paidFlags.includes('KNOWN_SAFE_TARGET')
+  ) {
+    return res;
+  }
+
+  const scan = scanVerifiedSolidity(trimmed);
+  if (scan.flags.length === 0) {
+    return res;
+  }
+
+  const paidFlags = uniqSorted([...res.paidFlags, ...scan.flags]);
+  const paidRiskScore = clamp(res.paidRiskScore + scan.paidRiskDelta, 0, 100);
+  const reputationScore = clamp(res.reputationScore + scan.reputationDelta, 0, 100);
+  const extra = scan.notes.join(' ');
+  const explanationSeed = extra ? `${res.explanationSeed} ${extra}` : res.explanationSeed;
+
+  return {
+    ...res,
+    paidFlags,
     paidRiskScore,
     reputationScore,
     explanationSeed,

@@ -10,7 +10,10 @@
     </div>
 
     <div class="trust-summary">
-      <p><strong>Score:</strong> <span class="score-number">{{ assessment.finalRiskScore }}</span>/100</p>
+      <p>
+        <strong>Riesgo (0–100, más alto = más peligroso):</strong>
+        <span class="score-number">{{ assessment.finalRiskScore }}</span>/100
+      </p>
       <p class="ai-summary">{{ assessment.aiSummary }}</p>
     </div>
 

@@ -13,6 +13,49 @@ import {
   type TrustX402Context,
 } from "../x402/riskClient";
 
+const clamp0to100 = (n: number): number =>
+  Math.min(100, Math.max(0, Math.round(n)));
+
+/**
+ * El API devuelve `paidRiskScore` (0–100, más alto = más riesgo) y `reputationScore` (más alto = mejor).
+ * Antes solo mezclábamos un 30% de (100 − reputación) sobre el score local, ignorando `paidRiskScore`,
+ * lo que dejaba el malicioso ~40 y podía invertir el orden frente al veredicto del LLM.
+ */
+export function mergePaidEvidenceIntoFinalRiskScore(
+  localRiskScore: number,
+  paid: TrustPaidRiskEvidence,
+): number {
+  const paidRisk = Number.isFinite(paid.paidRiskScore)
+    ? paid.paidRiskScore
+    : 50;
+  const local = clamp0to100(localRiskScore);
+  let score = clamp0to100(Math.round(0.62 * paidRisk + 0.38 * local));
+
+  const flags = paid.paidFlags ?? [];
+
+  if (flags.includes("UNVERIFIED_CONTRACT")) {
+    score = clamp0to100(score + 10);
+  }
+
+  if (
+    flags.includes("SOLIDITY_TX_ORIGIN_RISK") ||
+    flags.includes("SOLIDITY_UNGUARDED_ETH_CALL")
+  ) {
+    score = Math.max(score, 78);
+  }
+
+  if (flags.includes("KNOWN_MALICIOUS_TARGET")) {
+    score = Math.max(score, 92);
+  }
+
+  const verdict = paid.llmAnalysis?.verdict;
+  if (verdict === "malicious") {
+    score = Math.max(score, 80);
+  }
+
+  return clamp0to100(score);
+}
+
 export type OrchestrateRiskOptions = {
   /** `deep` → POST `/api/risk-check/deep` (más USDC, LLM deep). */
   tier?: TrustRiskCheckTier;
@@ -72,19 +115,20 @@ export async function orchestrateRiskAssessment(
     );
     
     if (paidEvidence) {
-      // Merge de Scoring
-      // Ej: Penalidad en base a la reputación recibida (100 - repScore)
-      const repPenalty = Math.floor((100 - (paidEvidence.reputationScore || 100)) * 0.3);
-      finalScore += repPenalty;
-      
-      if (paidEvidence.paidFlags && paidEvidence.paidFlags.includes("UNVERIFIED_CONTRACT")) {
-        finalScore += 20;
+      finalScore = mergePaidEvidenceIntoFinalRiskScore(
+        localSignals.localRiskScore,
+        paidEvidence,
+      );
+
+      if (
+        paidEvidence.paidFlags?.includes("UNVERIFIED_CONTRACT")
+      ) {
         reasons.push("x402 API flag: Contrato sin historial conocido");
       }
-      if (paidEvidence.paidFlags && paidEvidence.paidFlags.includes("UNLIMITED_APPROVAL")) {
-         // ya cobramos penalty en local, pero agregarlo visual
+      if (paidEvidence.paidFlags?.includes("UNLIMITED_APPROVAL")) {
+        // Penalidad ya reflejada en local + paidRiskScore del API
       }
-      
+
       if (paidEvidence.simulatedOutcome) {
         reasons.push(
           `Decodificación local (payload enviado): ${paidEvidence.simulatedOutcome}`,
@@ -100,8 +144,7 @@ export async function orchestrateRiskAssessment(
     }
   }
 
-  // Cap de seguridad a 100 max
-  finalScore = Math.min(finalScore, 100);
+  finalScore = clamp0to100(finalScore);
 
   // 4. Threshold determinista
   let finalLevel: "low" | "medium" | "high" = "low";

@@ -18,7 +18,11 @@ import type {
   TrustErrorEnvelope,
   TrustLlmAnalysis,
 } from '../types.js';
-import { evaluatePaidRisk, mergeExplorerIntoPaidRisk } from '../engine/scoreRisk.js';
+import {
+  evaluatePaidRisk,
+  mergeExplorerIntoPaidRisk,
+  mergeSolidityStaticIntoPaidRisk,
+} from '../engine/scoreRisk.js';
 import { createRequestId } from '../utils/requestId.js';
 import { readPaymentHeader } from '../x402/payment.js';
 
@@ -260,7 +264,12 @@ export const handleRiskCheck = async (
   const riskBase = evaluatePaidRisk(req);
   const contractRun = await runContractProbe(req);
   const explorerRun = await runExplorerSourceLookup(req, contractRun.public);
-  const riskBody = mergeExplorerIntoPaidRisk(riskBase, contractRun.public, explorerRun);
+  const riskAfterExplorer = mergeExplorerIntoPaidRisk(riskBase, contractRun.public, explorerRun);
+  const riskBody = mergeSolidityStaticIntoPaidRisk(
+    riskAfterExplorer,
+    explorerRun.sourceCodeForLlm,
+    explorerRun.public
+  );
   const { analysis, skippedReason } = await runOllamaAnalysis(req, riskBody, llmTier, {
     contract: contractRun,
     explorer: explorerRun,
