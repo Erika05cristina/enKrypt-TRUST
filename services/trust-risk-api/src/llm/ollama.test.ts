@@ -73,6 +73,8 @@ describe('runOllamaAnalysis', () => {
       flags: ['unverified_interaction'],
       summary: 'Exercise caution before signing.',
       bullets: ['Verify the recipient'],
+      technical_rationale: '',
+      ai_risk_score: 52,
     };
     fetchMock.mockResolvedValue({
       ok: true,
@@ -93,6 +95,7 @@ describe('runOllamaAnalysis', () => {
       verdict: 'caution',
       flags: ['unverified_interaction'],
       summary: 'Exercise caution before signing.',
+      llmRiskScore: 52,
       tier: 'standard',
       provider: 'ollama',
       model: 'test-model',
@@ -107,6 +110,9 @@ describe('runOllamaAnalysis', () => {
     expect(body.stream).toBe(false);
     expect(body.format).toBe('json');
     expect(body.messages[0].role).toBe('system');
+    const user = body.messages.find((m: { role: string }) => m.role === 'user')?.content as string;
+    expect(user).toContain('STANDARD (quick scan)');
+    expect(user).toContain(`paidRiskScore (${baseRisk.paidRiskScore})`);
   });
 
   it('returns raw text with rawStructuredError when JSON parse fails', async () => {
@@ -137,12 +143,14 @@ describe('runOllamaAnalysis', () => {
               flags: [],
               summary: 'x',
               bullets: [],
+              technical_rationale: 'Bytecode present; cannot fully verify without source.',
+              ai_risk_score: 61,
             }),
           },
         }) as { message: { content: string } },
     });
 
-    await runOllamaAnalysis(baseReq, baseRisk, 'deep', {
+    const { analysis } = await runOllamaAnalysis(baseReq, baseRisk, 'deep', {
       contract: {
         public: {
           to: baseReq.to,
@@ -154,11 +162,15 @@ describe('runOllamaAnalysis', () => {
       },
     });
 
+    expect(analysis?.llmRiskScore).toBe(61);
+    expect(analysis?.technicalRationale).toContain('Bytecode');
+
     const [, init] = fetchMock.mock.calls[0];
     const body = JSON.parse((init as RequestInit).body as string);
     const user = body.messages.find((m: { role: string }) => m.role === 'user')?.content as string;
     expect(user).toContain('bytecodeHex');
     expect(user).toContain('0xabab');
+    expect(user).toContain('DEEP (premium)');
   });
 
   it('includes verified Solidity and omits bytecode when prefer source (default)', async () => {
@@ -171,6 +183,8 @@ describe('runOllamaAnalysis', () => {
             flags: [],
             summary: 'ok',
             bullets: [],
+            technical_rationale: 'Simple external function; no fund custody in snippet.',
+            ai_risk_score: 22,
           }),
         },
       }),

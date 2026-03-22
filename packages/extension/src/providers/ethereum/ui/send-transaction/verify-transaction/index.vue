@@ -14,7 +14,14 @@
         <hardware-wallet-msg :wallet-type="account?.walletType" />
         
         <!-- TRUST Agent Panel -->
-        <trust-panel v-if="!isTrustLoading && trustAssessment" :assessment="trustAssessment" style="margin: 0 24px 16px 24px;" />
+        <trust-panel
+          v-if="!isTrustLoading && trustAssessment"
+          :assessment="trustAssessment"
+          :show-deep-upgrade="trustShowDeepUpgrade"
+          :deep-loading="trustDeepLoading"
+          style="margin: 0 24px 16px 24px;"
+          @request-deep="onTrustRequestDeep"
+        />
 
         <p
           class="verify-transaction__description"
@@ -84,7 +91,7 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeMount, ref, ComponentPublicInstance } from 'vue';
+import { computed, onBeforeMount, ref, ComponentPublicInstance } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import CloseIcon from '@action/icons/common/close-icon.vue';
 import BaseButton from '@action/components/base-button/index.vue';
@@ -117,7 +124,11 @@ import RateState from '@/libs/rate-state';
 import { useRateStore } from '@action/store/rate-store';
 import TrustPanel from '@/trust/ui/TrustPanel.vue';
 import { orchestrateRiskAssessment } from '@/trust/agent/orchestrator';
+import { TRUST_FUJI_CHAIN_ID } from '@/trust/constants';
 import { FinalRiskAssessment, PendingTxContext } from '@/trust/types';
+import { evmChainIdToNumber } from '@/trust/utils/evmChainId';
+import type { TrustX402Context } from '@/trust/x402/riskClient';
+import { trustFieldsFromEthereumTransaction } from '@/trust/utils/ethereumTxContext';
 
 /** -------------------
  * Rate
@@ -144,6 +155,38 @@ const isWindowPopup = ref(false);
 const errorMsg = ref('');
 const trustAssessment = ref<FinalRiskAssessment | null>(null);
 const isTrustLoading = ref(true);
+const trustTxContext = ref<PendingTxContext | null>(null);
+const trustX402Ref = ref<TrustX402Context | undefined>(undefined);
+const trustDeepLoading = ref(false);
+
+const trustShowDeepUpgrade = computed(() => {
+  const a = trustAssessment.value;
+  if (!a?.paidEvidence) return false;
+  if (a.paidEvidence.llmAnalysis?.tier === 'deep') return false;
+  return (
+    evmChainIdToNumber(
+      (network.value as { chainID: string | number }).chainID,
+    ) === TRUST_FUJI_CHAIN_ID && !!trustX402Ref.value
+  );
+});
+
+async function onTrustRequestDeep() {
+  if (!trustTxContext.value || !trustX402Ref.value) return;
+  trustDeepLoading.value = true;
+  try {
+    trustAssessment.value = await orchestrateRiskAssessment(
+      trustTxContext.value,
+      [],
+      trustX402Ref.value,
+      { tier: 'deep' },
+    );
+  } catch (err) {
+    console.error('TRUST deep assessment failed:', err);
+  } finally {
+    trustDeepLoading.value = false;
+  }
+}
+
 defineExpose({ verifyScrollRef });
 onBeforeMount(async () => {
   network.value = (await getNetworkByName(selectedNetwork))!;
@@ -152,15 +195,31 @@ onBeforeMount(async () => {
   isWindowPopup.value = account.value.isHardware;
 
   try {
+    const chainIdNum = evmChainIdToNumber(
+      (network.value as { chainID: string | number }).chainID,
+    );
+    const raw = trustFieldsFromEthereumTransaction(txData.TransactionData);
     const txContext: PendingTxContext = {
-      chainId: network.value.chainID,
+      chainId: chainIdNum,
       from: txData.fromAddress,
-      to: txData.toAddress,
-      value: txData.toToken.amount ? txData.toToken.amount.toString() : '0',
-      data: txData.TransactionData && txData.TransactionData.data ? bufferToHex(txData.TransactionData.data) : '0x',
-      origin: 'Enkrypt Internal'
+      /* `to` on-chain = contrato en ERC-20/NFT; toAddress en UI = destinatario humano. */
+      to: raw.to || txData.toAddress,
+      value: raw.value,
+      data: raw.data,
+      origin: 'Enkrypt Internal',
     };
-    trustAssessment.value = await orchestrateRiskAssessment(txContext);
+    let x402: TrustX402Context | undefined;
+    if (account.value) {
+      const sessionMod = await import('@/trust/x402/session');
+      x402 = sessionMod.tryCreateTrustX402Session({
+        account: account.value,
+        network: network.value,
+        chainIdDecimal: chainIdNum,
+      });
+    }
+    trustTxContext.value = txContext;
+    trustX402Ref.value = x402;
+    trustAssessment.value = await orchestrateRiskAssessment(txContext, [], x402);
   } catch (err) {
     console.error("TRUST Engine failed:", err);
   }

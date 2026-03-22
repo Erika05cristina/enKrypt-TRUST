@@ -69,7 +69,7 @@ export const evaluatePaidRisk = (req: RiskCheckRequest): RiskCheckSuccessRespons
 
   if (kind === 'native_transfer') {
     paidFlags.push('NATIVE_TRANSFER');
-    simulatedOutcome = `Native token transfer to ${to.slice(0, 10)}…`;
+    simulatedOutcome = `Native token transfer to ${req.to}`;
     paidRiskScore += malicious.has(to) ? 25 : 5;
     explanationSeed = malicious.has(to)
       ? 'Native transfer toward a flagged destination'
@@ -95,16 +95,16 @@ export const evaluatePaidRisk = (req: RiskCheckRequest): RiskCheckSuccessRespons
     } else {
       paidFlags.push('APPROVE_DECODE_FAILED');
       paidRiskScore += 10;
-      simulatedOutcome = 'Approve-like calldata could not be fully decoded';
+      simulatedOutcome = `Token contract ${req.to}: approve-like calldata could not be fully decoded`;
       explanationSeed = 'Incomplete approve calldata';
     }
   } else if (kind === 'unknown') {
     paidFlags.push('UNKNOWN_SELECTOR');
     paidRiskScore += 18;
-    simulatedOutcome = 'Contract call with unknown or non-standard selector';
+    simulatedOutcome = `Contract ${req.to}: call with unknown or non-standard selector`;
     explanationSeed = 'Unknown method; extra caution recommended';
   } else {
-    simulatedOutcome = 'Empty calldata with zero value';
+    simulatedOutcome = `Empty calldata with zero value (to ${req.to})`;
     explanationSeed = 'Low surface transaction';
     paidRiskScore -= 5;
   }

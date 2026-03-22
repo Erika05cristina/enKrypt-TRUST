@@ -98,6 +98,10 @@ export interface TrustLlmAnalysis {
   solidityTruncatedForLlm?: boolean;
   /** If the model returned non-JSON or invalid shape. */
   rawStructuredError?: string;
+  /** 0–100 from model JSON `ai_risk_score` (higher = more risk). Used to blend top-level scores on the API for tiered depth. */
+  llmRiskScore?: number;
+  /** Premium/deep: longer rationale from model JSON `technical_rationale`. */
+  technicalRationale?: string;
 }
 
 export interface RiskCheckSuccessResponse {

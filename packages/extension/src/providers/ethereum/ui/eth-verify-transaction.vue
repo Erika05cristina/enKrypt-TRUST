@@ -36,7 +36,13 @@
         <hardware-wallet-msg :wallet-type="account.walletType" />
 
         <!-- TRUST Agent Panel -->
-        <trust-panel v-if="!isTrustLoading && trustAssessment" :assessment="trustAssessment" />
+        <trust-panel
+          v-if="!isTrustLoading && trustAssessment"
+          :assessment="trustAssessment"
+          :show-deep-upgrade="trustShowDeepUpgrade"
+          :deep-loading="trustDeepLoading"
+          @request-deep="onTrustRequestDeep"
+        />
 
         <!-- Amount Card -->
         <div
@@ -218,7 +224,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, ComponentPublicInstance, onBeforeMount } from 'vue';
+import { computed, ref, ComponentPublicInstance, onBeforeMount } from 'vue';
 import SignLogo from '@action/icons/common/sign-logo.vue';
 import RightChevron from '@action/icons/common/right-chevron.vue';
 import BaseButton from '@action/components/base-button/index.vue';
@@ -254,12 +260,46 @@ import { trackSendEvents } from '@/libs/metrics';
 import { SendEventType } from '@/libs/metrics/types';
 import TrustPanel from '@/trust/ui/TrustPanel.vue';
 import { orchestrateRiskAssessment } from '@/trust/agent/orchestrator';
+import { TRUST_FUJI_CHAIN_ID } from '@/trust/constants';
 import { FinalRiskAssessment, PendingTxContext } from '@/trust/types';
+import { evmChainIdToNumber } from '@/trust/utils/evmChainId';
+import type { TrustX402Context } from '@/trust/x402/riskClient';
+import { trustFieldsFromEthereumTransaction } from '@/trust/utils/ethereumTxContext';
 
 const isProcessing = ref(false);
 const isLoading = ref(true);
 const trustAssessment = ref<FinalRiskAssessment | null>(null);
 const isTrustLoading = ref(true);
+const trustTxContext = ref<PendingTxContext | null>(null);
+const trustX402Ref = ref<TrustX402Context | undefined>(undefined);
+const trustDeepLoading = ref(false);
+
+const trustShowDeepUpgrade = computed(() => {
+  const a = trustAssessment.value;
+  if (!a?.paidEvidence) return false;
+  if (a.paidEvidence.llmAnalysis?.tier === 'deep') return false;
+  return (
+    evmChainIdToNumber(network.value.chainID) === TRUST_FUJI_CHAIN_ID &&
+    !!trustX402Ref.value
+  );
+});
+
+async function onTrustRequestDeep() {
+  if (!trustTxContext.value || !trustX402Ref.value) return;
+  trustDeepLoading.value = true;
+  try {
+    trustAssessment.value = await orchestrateRiskAssessment(
+      trustTxContext.value,
+      [],
+      trustX402Ref.value,
+      { tier: 'deep' },
+    );
+  } catch (err) {
+    console.error('TRUST deep assessment failed:', err);
+  } finally {
+    trustDeepLoading.value = false;
+  }
+}
 const isOpenSelectFee = ref(false);
 const providerVerifyTransactionScrollRef = ref<ComponentPublicInstance>();
 const isOpenData = ref(false);
@@ -392,15 +432,30 @@ onBeforeMount(async () => {
     })
     .finally(async () => {
       try {
+        const chainIdNum = evmChainIdToNumber(network.value.chainID);
+        const raw = trustFieldsFromEthereumTransaction(tx.tx);
         const txContext: PendingTxContext = {
-          chainId: Number(network.value.chainID),
+          chainId: chainIdNum,
           from: account.value.address,
-          to: tx.to ? tx.to.toString() : '',
-          value: tx.value ? tx.value.toString() : '0',
-          data: tx.data ? bufferToHex(tx.data) : '0x',
-          origin: Options.value.domain
+          to: raw.to,
+          value: raw.value,
+          data: raw.data,
+          origin: Options.value.domain,
         };
-        trustAssessment.value = await orchestrateRiskAssessment(txContext);
+        let x402: TrustX402Context | undefined;
+        const sessionMod = await import('@/trust/x402/session');
+        x402 = sessionMod.tryCreateTrustX402Session({
+          account: account.value,
+          network: network.value,
+          chainIdDecimal: chainIdNum,
+        });
+        trustTxContext.value = txContext;
+        trustX402Ref.value = x402;
+        trustAssessment.value = await orchestrateRiskAssessment(
+          txContext,
+          [],
+          x402,
+        );
       } catch (err) {
         console.error("TRUST Engine failed:", err);
       }

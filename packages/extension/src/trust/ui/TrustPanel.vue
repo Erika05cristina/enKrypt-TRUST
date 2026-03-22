@@ -20,6 +20,25 @@
       </li>
     </ul>
 
+    <div v-if="showDeepUpgrade" class="trust-deep-cta">
+      <p class="trust-deep-hint">
+        Segundo pago x402 en Fuji (≈ <strong>$0.02 USDC</strong>): análisis
+        <strong>deep</strong> con más contexto LLM.
+      </p>
+      <button
+        type="button"
+        class="trust-deep-button"
+        :disabled="deepLoading"
+        @click="$emit('request-deep')"
+      >
+        {{
+          deepLoading
+            ? 'Firmando pago premium…'
+            : 'Análisis premium (deep)'
+        }}
+      </button>
+    </div>
+
     <!-- Sección que sólo aparece si hubo una consulta a la API de tu compañero -->
     <div v-if="assessment.paidEvidence" class="paid-evidence-section">
       <div class="divider"></div>
@@ -37,12 +56,33 @@
       <!-- AI Analysis (Llm) -->
       <div v-if="assessment.paidEvidence?.llmAnalysis" class="llm-analysis-section">
         <div class="divider"></div>
-        <h4>🧠 AI Analysis ({{ assessment.paidEvidence.llmAnalysis.model }})</h4>
+        <h4>
+          🧠 AI Analysis ({{ assessment.paidEvidence.llmAnalysis.model }})
+          <span
+            v-if="assessment.paidEvidence.llmAnalysis.tier === 'deep'"
+            class="tier-badge tier-deep"
+            >DEEP</span
+          >
+        </h4>
         <div v-if="assessment.paidEvidence.llmAnalysis.verdict" class="ai-verdict" :class="'verdict-' + assessment.paidEvidence.llmAnalysis.verdict">
           Verdict: <strong>{{ assessment.paidEvidence.llmAnalysis.verdict.toUpperCase() }}</strong>
         </div>
         <p class="ai-text">
           {{ assessment.paidEvidence.llmAnalysis.summary || assessment.paidEvidence.llmAnalysis.text }}
+        </p>
+        <div
+          v-if="assessment.paidEvidence.llmAnalysis.technicalRationale"
+          class="ai-technical-rationale"
+        >
+          <h5 class="ai-technical-title">Detalle técnico (premium)</h5>
+          <p class="ai-technical-body">{{ assessment.paidEvidence.llmAnalysis.technicalRationale }}</p>
+        </div>
+        <p
+          v-if="assessment.paidEvidence.llmAnalysis.llmRiskScore !== undefined"
+          class="ai-llm-score"
+        >
+          Riesgo según IA: <strong>{{ assessment.paidEvidence.llmAnalysis.llmRiskScore }}/100</strong>
+          <span class="ai-llm-score-hint"> (influye en Reputación / riesgo pagado arriba)</span>
         </p>
       </div>
       
@@ -61,11 +101,24 @@
 import { computed, PropType } from 'vue';
 import { FinalRiskAssessment } from '../types';
 
+defineEmits<{
+  'request-deep': [];
+}>();
+
 const props = defineProps({
   assessment: {
     type: Object as PropType<FinalRiskAssessment>,
     required: true,
-  }
+  },
+  /** Muestra CTA para POST `/api/risk-check/deep` (otro x402). */
+  showDeepUpgrade: {
+    type: Boolean,
+    default: false,
+  },
+  deepLoading: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const riskLevelClass = computed(() => {
@@ -253,9 +306,90 @@ const riskLevelClass = computed(() => {
   border-left: 3px solid #6366f1;
 }
 
+.ai-llm-score {
+  font-size: 12px;
+  margin: 0 0 8px 0;
+  opacity: 0.95;
+}
+
+.ai-llm-score-hint {
+  font-size: 10px;
+  opacity: 0.75;
+  font-weight: 500;
+}
+
+.ai-technical-rationale {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+}
+
+.ai-technical-title {
+  margin: 0 0 6px 0;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #c4b5fd;
+}
+
+.ai-technical-body {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
 .probe-section p {
   margin: 2px 0;
   font-size: 12px;
   opacity: 0.9;
+}
+
+.trust-deep-cta {
+  margin: 14px 0;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.trust-deep-hint {
+  margin: 0 0 10px 0;
+  font-size: 12px;
+  line-height: 1.45;
+  opacity: 0.95;
+}
+
+.trust-deep-button {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: none;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+}
+
+.trust-deep-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.tier-badge {
+  margin-left: 8px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  vertical-align: middle;
+}
+
+.tier-deep {
+  background: rgba(139, 92, 246, 0.35);
+  border: 1px solid #a78bfa;
 }
 </style>

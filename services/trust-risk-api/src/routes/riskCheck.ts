@@ -12,7 +12,12 @@ import {
 import { runContractProbe } from '../chain/getCode.js';
 import { runExplorerSourceLookup } from '../chain/explorerSource.js';
 import { runOllamaAnalysis, type LlmTier } from '../llm/ollama.js';
-import type { RiskCheckRequest, RiskCheckSuccessResponse, TrustErrorEnvelope } from '../types.js';
+import type {
+  RiskCheckRequest,
+  RiskCheckSuccessResponse,
+  TrustErrorEnvelope,
+  TrustLlmAnalysis,
+} from '../types.js';
 import { evaluatePaidRisk, mergeExplorerIntoPaidRisk } from '../engine/scoreRisk.js';
 import { createRequestId } from '../utils/requestId.js';
 import { readPaymentHeader } from '../x402/payment.js';
@@ -74,6 +79,30 @@ type X402V1ErrorBody = {
 
 const isX402V1ErrorBody = (body: unknown): body is X402V1ErrorBody =>
   Boolean(body && typeof body === 'object' && 'accepts' in (body as object));
+
+const clamp0to100 = (n: number): number =>
+  Math.min(100, Math.max(0, Math.round(n)));
+
+/**
+ * When the LLM returns `ai_risk_score`, blend it into engine scores so deep (premium)
+ * moves numbers more than standard (quick scan).
+ */
+const applyLlmScoreBlend = (
+  body: RiskCheckSuccessResponse,
+  llm: TrustLlmAnalysis | null | undefined,
+  tier: RiskCheckTier
+): RiskCheckSuccessResponse => {
+  if (!llm || llm.llmRiskScore === undefined) return body;
+  const ai = llm.llmRiskScore;
+  const wEngine = tier === 'deep' ? 0.35 : 0.88;
+  const wAi = 1 - wEngine;
+  const repFromAi = clamp0to100(100 - ai);
+  return {
+    ...body,
+    paidRiskScore: clamp0to100(wEngine * body.paidRiskScore + wAi * ai),
+    reputationScore: clamp0to100(wEngine * body.reputationScore + wAi * repFromAi),
+  };
+};
 
 const tierConfig = (tier: RiskCheckTier) => {
   if (tier === 'deep') {
@@ -237,8 +266,10 @@ export const handleRiskCheck = async (
     explorer: explorerRun,
   });
 
+  const blended = applyLlmScoreBlend(riskBody, analysis, tier);
+
   const responseBody: RiskCheckSuccessResponse = {
-    ...riskBody,
+    ...blended,
     contractProbe: contractRun.public,
     explorerSourceProbe: explorerRun.public,
     llmAnalysis: analysis,

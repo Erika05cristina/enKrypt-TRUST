@@ -21,7 +21,10 @@ export const validateRiskCheckRequest = (payload: unknown): ValidationResult => 
       reason: 'Request body must be a JSON object',
       errorCode: 'BAD_REQUEST',
     };
+    
   }
+
+  
 
   const req = payload as Partial<RiskCheckRequest>;
 

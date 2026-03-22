@@ -107,9 +107,26 @@ type ParsedLlmJson = {
   flags: string[];
   summary?: string;
   bullets: string[];
+  technicalRationale?: string;
+  llmRiskScore?: number;
 };
 
-const tryParseStructured = (raw: string): { ok: true; data: ParsedLlmJson } | { ok: false } => {
+const clampInt0to100 = (n: number): number =>
+  Number.isFinite(n) ? Math.min(100, Math.max(0, Math.round(n))) : 50;
+
+const normalizeAiRiskScore = (v: unknown): number | undefined => {
+  if (typeof v === 'number' && Number.isFinite(v)) return clampInt0to100(v);
+  if (typeof v === 'string' && v.trim()) {
+    const n = Number.parseInt(v.trim(), 10);
+    if (Number.isFinite(n)) return clampInt0to100(n);
+  }
+  return undefined;
+};
+
+const tryParseStructured = (
+  raw: string,
+  tier: LlmTier
+): { ok: true; data: ParsedLlmJson } | { ok: false } => {
   const trimmed = raw.trim();
   try {
     const o = JSON.parse(trimmed) as Record<string, unknown>;
@@ -117,7 +134,33 @@ const tryParseStructured = (raw: string): { ok: true; data: ParsedLlmJson } | { 
     const flags = normalizeFlags(o.flags);
     const summary = typeof o.summary === 'string' ? o.summary.trim().slice(0, 2000) : undefined;
     const bullets = normalizeBullets(o.bullets);
-    return { ok: true, data: { verdict, flags, summary, bullets } };
+    const techRaw = o.technical_rationale;
+    const technicalRationale =
+      typeof techRaw === 'string' && techRaw.trim().length > 0
+        ? techRaw.trim().slice(0, 6000)
+        : undefined;
+    const llmRiskScore = normalizeAiRiskScore(o.ai_risk_score);
+    let outBullets = bullets;
+    if (tier === 'standard' && outBullets.length > 3) {
+      outBullets = outBullets.slice(0, 3);
+    } else if (tier === 'deep' && outBullets.length > 12) {
+      outBullets = outBullets.slice(0, 12);
+    }
+    const summaryOut =
+      tier === 'standard' && summary && summary.length > 320
+        ? `${summary.slice(0, 317)}…`
+        : summary;
+    return {
+      ok: true,
+      data: {
+        verdict,
+        flags,
+        summary: summaryOut,
+        bullets: outBullets,
+        technicalRationale: tier === 'deep' ? technicalRationale : undefined,
+        llmRiskScore,
+      },
+    };
   } catch {
     return { ok: false };
   }
@@ -192,6 +235,7 @@ const buildExplorerSection = (
 };
 
 const buildUserPrompt = (
+  tier: LlmTier,
   req: RiskCheckRequest,
   risk: RiskCheckSuccessResponse,
   dataSnippet: string,
@@ -204,7 +248,30 @@ const buildUserPrompt = (
     req.localFlags && req.localFlags.length > 0
       ? `localFlags: ${req.localFlags.join(', ')}\n`
       : '';
+
+  const tierBlock =
+    tier === 'deep'
+      ? `Analysis tier: DEEP (premium).
+- Be thorough: this user paid for a deeper pass.
+- "summary": 2–4 sentences, concrete but readable for a wallet user.
+- "bullets": 5–12 items when evidence allows; mention specific patterns (e.g. external calls, allowance changes, proxies, admin roles) when Solidity or strong metadata supports it.
+- "technical_rationale": REQUIRED string, 3–8 sentences: walk through the strongest on-chain / source / bytecode evidence, explicit uncertainties, and what a user should verify next.
+- "ai_risk_score": REQUIRED integer 0–100 where 100 = worst perceived risk. Base this on YOUR reading of ALL context below; you MAY diverge from the engine paidRiskScore by up to ~25 points if the evidence justifies it (e.g. verified source shows hidden risk, or benign-looking calldata is misleading).`
+      : `Analysis tier: STANDARD (quick scan).
+- Keep output SHORT: this is a fast screening pass.
+- "summary": exactly ONE short sentence (max ~25 words).
+- "bullets": at most 3 short, high-level items; no opcode-level detail, no long code quotes.
+- "technical_rationale": use empty string "" (do not write a long technical paragraph).
+- "ai_risk_score": OPTIONAL integer 0–100. If you include it, stay close to the engine: within ±10 of paidRiskScore (${risk.paidRiskScore}) unless localFlags or explorer flags strongly contradict; if omitted, the server will not apply an AI score blend.`;
+
+  const jsonKeys =
+    tier === 'deep'
+      ? `- "verdict", "flags", "summary", "bullets", "technical_rationale", "ai_risk_score"`
+      : `- "verdict", "flags", "summary", "bullets", "technical_rationale" (""), "ai_risk_score" (optional)`;
+
   return `You are a security assistant for EVM transaction previews. Do not claim you executed anything on-chain.
+
+${tierBlock}
 
 Transaction context:
 chainId: ${req.chainId}
@@ -219,11 +286,10 @@ ${explorerSection}
 Deterministic risk engine output (JSON; includes explorer-based flags such as EXPLORER_SOURCE_VERIFIED / EXPLORER_SOURCE_NOT_VERIFIED):
 ${JSON.stringify(risk)}
 
-Task: Return ONLY a single JSON object (no markdown fences) with exactly these keys:
+Task: Return ONLY a single JSON object (no markdown fences) with these keys:
+${jsonKeys}
 - "verdict": one of "safe", "caution", "malicious", "unknown"
 - "flags": array of short snake_case strings (risk signals you infer; may be empty)
-- "summary": one clear sentence for a wallet user
-- "bullets": array of 0–6 short user-facing bullet strings
 
 Rules:
 - If verified Solidity is present above, reason about concrete code patterns (access control, external calls, fund flows) but stay humble; you are not a formal verifier.
@@ -236,9 +302,15 @@ Rules:
 const buildDisplayText = (data: ParsedLlmJson): string => {
   const lines: string[] = [];
   if (data.summary) lines.push(data.summary);
+  if (data.technicalRationale) {
+    lines.push('', 'Technical rationale:', data.technicalRationale);
+  }
   for (const b of data.bullets) lines.push(`• ${b}`);
   lines.push(`Verdict: ${data.verdict}`);
   if (data.flags.length) lines.push(`Flags: ${data.flags.join(', ')}`);
+  if (data.llmRiskScore !== undefined) {
+    lines.push(`AI risk score: ${data.llmRiskScore}/100`);
+  }
   return lines.join('\n').trim();
 };
 
@@ -311,6 +383,7 @@ export const runOllamaAnalysis = async (
   const explorerSection = buildExplorerSection(explorer, soliditySnippet, solidityTruncated);
 
   const userContent = buildUserPrompt(
+    tier,
     req,
     riskBody,
     snippet,
@@ -364,7 +437,7 @@ export const runOllamaAnalysis = async (
       return { analysis: null, skippedReason: 'Ollama returned empty message content' };
     }
 
-    const parsed = tryParseStructured(textRaw);
+    const parsed = tryParseStructured(textRaw, tier);
     if (!parsed.ok) {
       const analysis: TrustLlmAnalysis = {
         text: textRaw,
@@ -392,6 +465,8 @@ export const runOllamaAnalysis = async (
       verdict: data.verdict,
       flags: data.flags.length ? data.flags : undefined,
       summary: data.summary,
+      technicalRationale: data.technicalRationale,
+      llmRiskScore: data.llmRiskScore,
       disclaimer: AI_ASSESSMENT_DISCLAIMER,
       bytecodeTruncatedForLlm: bytecodeTruncated || undefined,
       solidityTruncatedForLlm: solidityTruncated || undefined,

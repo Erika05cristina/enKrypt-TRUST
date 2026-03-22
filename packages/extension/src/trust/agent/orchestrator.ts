@@ -1,12 +1,30 @@
-import { PendingTxContext, AgentDecision, FinalRiskAssessment } from "../types";
+import {
+  PendingTxContext,
+  AgentDecision,
+  FinalRiskAssessment,
+  TrustPaidRiskEvidence,
+} from "../types";
+import { TRUST_FUJI_CHAIN_ID } from "../constants";
 import { analyzeTxLocally } from "../analyzer/decodeTx";
 import { applyDeterministicRules } from "../analyzer/localRules";
-import { fetchPaidRiskEvidence } from "../x402/riskClient";
+import {
+  fetchPaidRiskEvidence,
+  type TrustRiskCheckTier,
+  type TrustX402Context,
+} from "../x402/riskClient";
+
+export type OrchestrateRiskOptions = {
+  /** `deep` → POST `/api/risk-check/deep` (más USDC, LLM deep). */
+  tier?: TrustRiskCheckTier;
+};
 
 export async function orchestrateRiskAssessment(
   txContext: PendingTxContext,
-  allowlist: string[] = []
+  allowlist: string[] = [],
+  x402?: TrustX402Context | null,
+  options?: OrchestrateRiskOptions,
 ): Promise<FinalRiskAssessment> {
+  const tier = options?.tier ?? "standard";
   // 1. Análisis Local Rápido
   const rawSignals = analyzeTxLocally(txContext, allowlist);
   const localSignals = applyDeterministicRules(rawSignals);
@@ -33,7 +51,7 @@ export async function orchestrateRiskAssessment(
   }
 
   let finalScore = localSignals.localRiskScore;
-  let paidEvidence = null;
+  let paidEvidence: TrustPaidRiskEvidence | null = null;
   const reasons: string[] = [];
 
   // Agregar razones locales determinísticas
@@ -46,7 +64,12 @@ export async function orchestrateRiskAssessment(
   decision.shouldQueryPaidApi = true;
   
   if (decision.shouldQueryPaidApi) {
-    paidEvidence = await fetchPaidRiskEvidence(txContext, localSignals.localFlags);
+    paidEvidence = await fetchPaidRiskEvidence(
+      txContext,
+      localSignals.localFlags,
+      x402,
+      tier,
+    );
     
     if (paidEvidence) {
       // Merge de Scoring
@@ -63,10 +86,17 @@ export async function orchestrateRiskAssessment(
       }
       
       if (paidEvidence.simulatedOutcome) {
-        reasons.push(`Simulando tx localmente: ${paidEvidence.simulatedOutcome}`);
+        reasons.push(
+          `Decodificación local (payload enviado): ${paidEvidence.simulatedOutcome}`,
+        );
       }
     } else {
       reasons.push("⚠️ Falló la consulta al Risk Engine externo, aplicando score local");
+      if (txContext.chainId === TRUST_FUJI_CHAIN_ID && !x402) {
+        reasons.push(
+          "Para x402 en Fuji: define VITE_THIRDWEB_CLIENT_ID, VITE_TRUST_RISK_API_BASE_URL y ten USDC en Fuji para firmar el pago.",
+        );
+      }
     }
   }
 
@@ -82,11 +112,16 @@ export async function orchestrateRiskAssessment(
     reasons.push("Interacción estándar. No se encontraron riesgos");
   }
 
+  const tierLabel =
+    tier === "deep"
+      ? " (análisis premium / deep)"
+      : "";
+
   return {
     finalRiskLevel: finalLevel,
     finalRiskScore: finalScore,
     reasons,
-    aiSummary: `TRUST Agent Assessment: Nivel ${finalLevel.toUpperCase()} con Score: ${finalScore}/100.`,
+    aiSummary: `TRUST Agent Assessment: Nivel ${finalLevel.toUpperCase()} con Score: ${finalScore}/100.${tierLabel}`,
     paidEvidence: paidEvidence || undefined
   };
 }

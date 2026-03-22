@@ -68,6 +68,10 @@ export interface TrustLlmAnalysis {
   bytecodeTruncatedForLlm?: boolean;
   solidityTruncatedForLlm?: boolean;
   rawStructuredError?: string;
+  /** 0–100 (más alto = más riesgo según el modelo). */
+  llmRiskScore?: number;
+  /** Tier deep: texto técnico ampliado del modelo. */
+  technicalRationale?: string;
 }
 
 export interface TrustPaidRiskEvidence {
