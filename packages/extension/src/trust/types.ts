@@ -74,6 +74,17 @@ export interface TrustLlmAnalysis {
   technicalRationale?: string;
 }
 
+/** Eco EIP-8004 del API cuando `TRUST_ERC8004_*` está configurado en el servidor. */
+export interface TrustErc8004AgentRef {
+  chainId: number;
+  identityRegistry: string;
+  reputationRegistry?: string;
+  agentRegistry: string;
+  agentId: string;
+  agentRegistration: string;
+  note?: string;
+}
+
 export interface TrustPaidRiskEvidence {
   verified: boolean;
   reputationScore: number;
@@ -85,6 +96,7 @@ export interface TrustPaidRiskEvidence {
   explorerSourceProbe?: TrustExplorerSourceProbe;
   llmAnalysis?: TrustLlmAnalysis | null;
   llmSkippedReason?: string;
+  erc8004?: TrustErc8004AgentRef;
 }
 
 export interface TrustErrorEnvelope {

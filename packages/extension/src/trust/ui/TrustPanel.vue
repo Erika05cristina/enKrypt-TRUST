@@ -54,6 +54,20 @@
           {{ flag }}
         </span>
       </div>
+      <div v-if="assessment.paidEvidence.erc8004" class="erc8004-section">
+        <p class="erc8004-title">ERC-8004 (Trustless Agents)</p>
+        <p class="erc8004-line">
+          <code>agentId</code> {{ assessment.paidEvidence.erc8004.agentId }} ·
+          <a
+            :href="assessment.paidEvidence.erc8004.agentRegistration"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="erc8004-link"
+            >agent-registration.json</a
+          >
+        </p>
+        <p class="erc8004-sub"><code>{{ assessment.paidEvidence.erc8004.agentRegistry }}</code></p>
+      </div>
       </div>
       
       <!-- AI Analysis (Llm) -->
@@ -348,6 +362,41 @@ const riskLevelClass = computed(() => {
   margin: 2px 0;
   font-size: 12px;
   opacity: 0.9;
+}
+
+.erc8004-section {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(129, 140, 248, 0.35);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.erc8004-title {
+  margin: 0 0 4px 0;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 10px;
+  color: #c4b5fd;
+}
+
+.erc8004-line {
+  margin: 0;
+  opacity: 0.95;
+}
+
+.erc8004-sub {
+  margin: 4px 0 0 0;
+  opacity: 0.85;
+  word-break: break-all;
+}
+
+.erc8004-link {
+  color: #a5b4fc;
+  text-decoration: underline;
 }
 
 .trust-deep-cta {

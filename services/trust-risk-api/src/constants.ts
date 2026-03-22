@@ -2,6 +2,8 @@ export const FUJI_CHAIN_ID = 43113;
 export const FUJI_NETWORK = 'avalanche-fuji';
 export const RISK_CHECK_RESOURCE = '/api/risk-check';
 export const RISK_CHECK_DEEP_RESOURCE = '/api/risk-check/deep';
+/** GET — JSON de registro de agente (EIP-8004 tokenURI / descubrimiento). */
+export const AGENT_REGISTRATION_RESOURCE = '/agent-registration.json';
 
 export const TRUST_X402_SCHEME = 'exact';
 /** Ejemplo $0.001 USDC (6 decimales); el precio real del 402 lo fija el facilitador según env. */

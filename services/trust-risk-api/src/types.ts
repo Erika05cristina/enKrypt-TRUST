@@ -104,6 +104,20 @@ export interface TrustLlmAnalysis {
   technicalRationale?: string;
 }
 
+/** Referencia EIP-8004 cuando `TRUST_ERC8004_*` está configurado (descubrimiento / confianza on-chain). */
+export interface TrustErc8004AgentRef {
+  chainId: number;
+  identityRegistry: string;
+  reputationRegistry?: string;
+  /** p.ej. `eip155:43113:0x8004…` */
+  agentRegistry: string;
+  /** tokenId del agente en IdentityRegistry */
+  agentId: string;
+  /** URL pública de este JSON (`GET /agent-registration.json`). */
+  agentRegistration: string;
+  note?: string;
+}
+
 export interface RiskCheckSuccessResponse {
   verified: boolean;
   reputationScore: number;
@@ -119,5 +133,7 @@ export interface RiskCheckSuccessResponse {
   llmAnalysis?: TrustLlmAnalysis | null;
   /** Por qué no hay análisis LLM (deshabilitado, timeout, error de red, etc.). */
   llmSkippedReason?: string;
+  /** Eco opcional ERC-8004 (requiere env); no altera el motor de riesgo. */
+  erc8004?: TrustErc8004AgentRef;
 }
 

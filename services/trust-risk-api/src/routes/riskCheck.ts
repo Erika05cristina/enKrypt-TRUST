@@ -23,6 +23,7 @@ import {
   mergeExplorerIntoPaidRisk,
   mergeSolidityStaticIntoPaidRisk,
 } from '../engine/scoreRisk.js';
+import { getErc8004AgentRef } from '../config/erc8004.js';
 import { createRequestId } from '../utils/requestId.js';
 import { readPaymentHeader } from '../x402/payment.js';
 
@@ -277,12 +278,15 @@ export const handleRiskCheck = async (
 
   const blended = applyLlmScoreBlend(riskBody, analysis, tier);
 
+  const erc8004 = getErc8004AgentRef(config.publicBaseUrl);
+
   const responseBody: RiskCheckSuccessResponse = {
     ...blended,
     contractProbe: contractRun.public,
     explorerSourceProbe: explorerRun.public,
     llmAnalysis: analysis,
     ...(!analysis && skippedReason ? { llmSkippedReason: skippedReason } : {}),
+    ...(erc8004 ? { erc8004 } : {}),
   };
 
   const headers = mergeResponseHeaders(requestId, settleResult.responseHeaders, true);

@@ -47,7 +47,7 @@ const CORS_ALLOW_HEADERS =
 const setCors = (res: http.ServerResponse): void => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', CORS_ALLOW_HEADERS);
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Expose-Headers', 'X-PAYMENT-RESPONSE, x-request-id');
 };
 
@@ -106,5 +106,8 @@ server.listen(port, listenHost, () => {
   );
   console.log(
     `[trust-risk-api] Paid risk check (deep) → POST ${publicBaseUrl}/api/risk-check/deep`
+  );
+  console.log(
+    `[trust-risk-api] ERC-8004 agent registration file → GET ${publicBaseUrl}/agent-registration.json`
   );
 });

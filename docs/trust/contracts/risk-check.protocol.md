@@ -2,6 +2,9 @@
 
 ## Endpoints
 
+- Method: `GET`
+- Path: `/agent-registration.json` — archivo JSON de registro de agente **EIP-8004** (sin pago; CORS permitido). Incluye endpoints de los `POST` de abajo y, si el servidor tiene `TRUST_ERC8004_*` configurado, el bloque `registrations`.
+
 - Method: `POST`
 - Paths:
   - `/api/risk-check` — pago **estándar** (precio `TRUST_SETTLE_PRICE_USD`, default `$0.001`)
@@ -45,6 +48,7 @@ En respuestas de pago, incluir headers de facilitador si aplica:
 ## Respuesta 200 (B3 + contractProbe + explorerSourceProbe + LLM opcional)
 
 - Campos B3: `verified`, `reputationScore`, `paidRiskScore`, `paidFlags`, `simulatedOutcome`, `explanationSeed`
+- Opcional **EIP-8004:** `erc8004` (`agentRegistry`, `agentId`, `agentRegistration`, …) si el operador configuró `TRUST_ERC8004_IDENTITY_REGISTRY` y `TRUST_ERC8004_AGENT_ID` en el servidor
 - Tras el pago, B3 puede enriquecerse con explorador: `EXPLORER_SOURCE_NOT_VERIFIED` (contrato sin fuente verificada en Routescan/Etherscan-compatible), `EXPLORER_SOURCE_VERIFIED` (fuente publicada; se retira `UNVERIFIED_CONTRACT`), o `EXPLORER_LOOKUP_FAILED` si la API falla
 - `contractProbe`: resultado de `eth_getCode` sobre `to` en Fuji si `TRUST_FUJI_RPC_URL` está configurado (`kind` eoa|contract, `bytecodeLengthBytes`, `deterministicHints` opcionales); si no hay RPC, `probeError` (p. ej. `no_rpc_url`) y el `200` igualmente válido
 - `explorerSourceProbe`: metadatos de `getsourcecode` (sin enviar el Solidity en el JSON); `TRUST_EXPLORER_DISABLED=true` omite la consulta
