@@ -62,6 +62,14 @@ Build an **agent** aligned with **ERC-8004** that uses **x402** to **pay per API
 
 *(Aligned with the ERC-8004 contracts documentation; confirm on-chain that the deployment matches Fuji 43113.)*
 
+**TRUST on Fuji (this project):** registration uses the proxy Identity Registry above. Operator-facing links:
+
+- **Write contract (proxy):** [Snowtrace testnet — `0x8004…BD9e` / Write as Proxy](https://testnet.snowtrace.io/address/0x8004A818BFB912233c491871b3d84c89A494BD9e/contract/43113/writeProxyContract) — call `register`, `setAgentURI`, etc.
+- **Example `register` tx:** [subnets-test.avax.network — `0x0c36…48f9`](https://subnets-test.avax.network/c-chain/tx/0x0c36e6a520be79758de3a03611af8063d3797a0806a6d329462013be2d9b48f9?tab=details)
+- **Example `setAgentURI` tx:** [Snowtrace testnet — `0x559a…53d1`](https://testnet.snowtrace.io/tx/0x559a09485158c0086f8545c6e4998313983a9a6e1c75aecd0e78bfcb0f7253d1?chainid=43113)
+
+More detail: [`docs/trust/contracts/erc-8004-implementation.md`](contracts/erc-8004-implementation.md) §5.
+
 ### 4.2 Logical agent identifier
 
 - **`agentRegistry`:** string like `eip155:<chainId>:<identityRegistryAddress>` (registry address lowercased).

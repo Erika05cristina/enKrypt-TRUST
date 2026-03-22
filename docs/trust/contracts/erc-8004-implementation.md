@@ -76,7 +76,23 @@ Documented in `services/trust-risk-api/.env.example`. Summary:
 
 ---
 
-## 5. Operator checklist (off-server)
+## 5. Fuji testnet — TRUST reference (contract + transactions)
+
+This project uses the **ERC-8004 Identity Registry** on **Avalanche Fuji** (`chainId` **43113**) at:
+
+`0x8004A818BFB912233c491871b3d84c89A494BD9e`
+
+| Step | Link | Notes |
+|------|------|--------|
+| **Contract (proxy — write `register`, `setAgentURI`, …)** | [Snowtrace testnet — Write as Proxy](https://testnet.snowtrace.io/address/0x8004A818BFB912233c491871b3d84c89A494BD9e/contract/43113/writeProxyContract) | Use the wallet that will **own** the agent NFT / operate the agent. |
+| **`register` (example tx)** | [Avalanche Subnet Explorer — transaction `0x0c36…48f9`](https://subnets-test.avax.network/c-chain/tx/0x0c36e6a520be79758de3a03611af8063d3797a0806a6d329462013be2d9b48f9?tab=details) | After minting, set **`TRUST_ERC8004_AGENT_ID`** to the **`tokenId`** from this transaction’s logs / receipt (ERC-721 `Transfer` or registry-specific event). |
+| **`setAgentURI` (example tx)** | [Snowtrace testnet — transaction `0x559a…53d1`](https://testnet.snowtrace.io/tx/0x559a09485158c0086f8545c6e4998313983a9a6e1c75aecd0e78bfcb0f7253d1?chainid=43113) | URI must be the live **`https://<your-api-base>/agent-registration.json`** (same host as **`TRUST_PUBLIC_BASE_URL`**). |
+
+Explorers differ by product (Snowtrace vs [subnets-test.avax.network](https://subnets-test.avax.network)); both index the same C-Chain testnet. Re-run **`register` / `setAgentURI`** from your own operator wallet if you fork the deployment; the links above document **this repo’s** testnet flow.
+
+---
+
+## 6. Operator checklist (off-server)
 
 1. Fund **Fuji** gas (test AVAX).
 2. Call **`register`** on the Identity Registry → record **`agentId`**.
@@ -87,7 +103,7 @@ Documented in `services/trust-risk-api/.env.example`. Summary:
 
 ---
 
-## 6. Enkrypt extension (wallet UI)
+## 7. Enkrypt extension (wallet UI)
 
 | Item | Detail |
 |------|--------|
@@ -100,7 +116,7 @@ No change to local vs paid risk **logic** — display and transparency only.
 
 ---
 
-## 7. Explicit non-goals (current repo)
+## 8. Explicit non-goals (current repo)
 
 Aligned with [`../technical.md`](../technical.md) §10:
 
@@ -111,7 +127,7 @@ Aligned with [`../technical.md`](../technical.md) §10:
 
 ---
 
-## 8. Code and tests
+## 9. Code and tests
 
 | Area | Path |
 |------|------|
@@ -125,7 +141,7 @@ Run API tests: `cd services/trust-risk-api && npm test`.
 
 ---
 
-## 9. Related contract artifacts
+## 10. Related contract artifacts
 
 - **Risk-check protocol / schemas:** `risk-check.protocol.md`, `risk-check.request.schema.json`, `risk-check.responses.json` — core A/B contract; optional `erc8004` on `200` can be added to response examples in a future doc pass.
 - **Phase B0 freeze:** `phase-b0-contract-freeze.md` — x402 MVP scope; ERC-8004 is orthogonal metadata + discovery.
