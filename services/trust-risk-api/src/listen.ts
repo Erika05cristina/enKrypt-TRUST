@@ -1,6 +1,15 @@
-import 'dotenv/config';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import dotenv from 'dotenv';
 import http from 'node:http';
 import { createServerHandler } from './server.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+/** Cargar `.env` junto a `package.json`, no desde `process.cwd()` (evita "no_rpc_url" al arrancar desde la raíz del monorepo). */
+const envResult = dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
+if (envResult.error && !/enoent|no such file|cannot find|not found/i.test(envResult.error.message)) {
+  console.warn('[trust-risk-api] .env:', envResult.error.message);
+}
 
 const requireEnv = (key: string): string => {
   const value = process.env[key];
@@ -82,6 +91,12 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(port, listenHost, () => {
   console.log(`[trust-risk-api] bound http://${listenHost}:${port} (acepta conexiones externas si el firewall lo permite)`);
+  console.log(
+    `[trust-risk-api] dotenv loaded from ${path.resolve(__dirname, '..', '.env')}`
+  );
+  console.log(
+    `[trust-risk-api] TRUST_FUJI_RPC_URL → ${process.env.TRUST_FUJI_RPC_URL?.trim() ? 'OK (eth_getCode habilitado)' : 'VACÍO → contractProbe.no_rpc_url; revisa .env'}`
+  );
   console.log(
     `[trust-risk-api] x402 TRUST_PUBLIC_BASE_URL → ${publicBaseUrl} (debe coincidir con la URL pública del túnel, ej. ngrok)`
   );

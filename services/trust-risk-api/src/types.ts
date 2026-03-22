@@ -57,7 +57,9 @@ export type TrustExplorerLookupReason =
   | 'unsupported_chain'
   | 'not_a_contract'
   | 'invalid_address'
-  | 'explorer_disabled';
+  | 'explorer_disabled'
+  /** eth_getCode no corrió o falló (p. ej. TRUST_FUJI_RPC_URL vacío / timeout). */
+  | 'contract_probe_unavailable';
 
 export type TrustExplorerProbeError = 'api_error' | 'timeout' | 'invalid_response';
 

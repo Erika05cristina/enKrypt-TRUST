@@ -37,7 +37,8 @@ export type TrustExplorerLookupReason =
   | 'unsupported_chain'
   | 'not_a_contract'
   | 'invalid_address'
-  | 'explorer_disabled';
+  | 'explorer_disabled'
+  | 'contract_probe_unavailable';
 
 export type TrustExplorerProbeError = 'api_error' | 'timeout' | 'invalid_response';
 

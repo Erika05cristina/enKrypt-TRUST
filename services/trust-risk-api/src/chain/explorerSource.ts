@@ -80,6 +80,10 @@ export const runExplorerSourceLookup = async (
     return skippedRun(addr, chainId, 'unsupported_chain');
   }
 
+  if (contractProbe.probeError) {
+    return skippedRun(addr, chainId, 'contract_probe_unavailable');
+  }
+
   if (contractProbe.kind !== 'contract') {
     return skippedRun(addr, chainId, 'not_a_contract');
   }

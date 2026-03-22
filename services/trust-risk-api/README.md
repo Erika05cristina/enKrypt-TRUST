@@ -26,6 +26,8 @@ cp .env.example .env
 # Edita .env con tus valores reales
 ```
 
+El servidor carga **siempre** el `.env` que está en la carpeta del paquete (`services/trust-risk-api/.env`), aunque arranques `npm run dev` desde otro directorio del monorepo. Si ves `contractProbe.probeError: no_rpc_url` con `TRUST_FUJI_RPC_URL` ya definido, reinicia el proceso y revisa el log de arranque: `TRUST_FUJI_RPC_URL → OK`.
+
 **Importante:** `TRUST_PUBLIC_BASE_URL` debe ser **exactamente** la URL base que usara el cliente al llamar al API (incluye host y puerto). Si llamas con `http://127.0.0.1:8787`, no uses `http://localhost:8787` en el env.
 
 **Exponer con ngrok / red local:** el servidor escucha por defecto en **`0.0.0.0`** (`HOST` en `.env`, ej. `HOST=127.0.0.1` solo loopback). Cuando uses un túnel, pon `TRUST_PUBLIC_BASE_URL` igual a la URL pública del túnel (ej. `https://xxxx.ngrok-free.app` sin barra final); si no coincide, x402 puede fallar en el segundo `POST`.
