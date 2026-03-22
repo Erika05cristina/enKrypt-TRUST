@@ -2,6 +2,8 @@
 
 Architecture and integration notes for **TRUST** (Transaction Risk & User Security Toolkit) on the fork of **[Enkrypt](https://github.com/enkryptcom/enKrypt)**. Covers the **risk-assessment agent** design, the **HTTP x402** micropayment flow, alignment with **[EIP-8004](https://eips.ethereum.org/EIPS/eip-8004) (Trustless Agents)**, external services composed by the backend, and explicit scope boundaries.
 
+> 🛠️ **Setup & Execution:** Looking to spin up the architecture locally? See our comprehensive **[Installation Guide](INSTALLATION.md)**.
+
 ---
 
 ## 1. System vision
@@ -190,6 +192,7 @@ Record the resulting hash in internal team docs alongside the upstream commit re
 
 ## 13. References
 
+- [Installation Guide: Spinning up T.R.U.S.T Locally](INSTALLATION.md)
 - [Enkrypt](https://github.com/enkryptcom/enKrypt)
 - [EIP-8004: Trustless Agents](https://eips.ethereum.org/EIPS/eip-8004)
 - thirdweb docs (x402: `settlePayment`, `wrapFetchWithPayment`) — see `services/trust-risk-api/README.md`
