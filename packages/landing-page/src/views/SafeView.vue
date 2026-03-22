@@ -48,7 +48,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { Contract, parseEther } from 'ethers'
+import { ethers } from 'ethers'
 import { useWallet } from '../composables/useWallet'
 
 const { userAccount, signer, connectWallet, error } = useWallet()
@@ -69,11 +69,11 @@ const donate = async () => {
   }
 
   try {
-    const contract = new Contract(SAFE_CONTRACT_ADDRESS, ABI, signer.value)
+    const contract = new ethers.Contract(SAFE_CONTRACT_ADDRESS, ABI, signer.value)
     // Usamos gasLimit manual para evitar que ethers haga eth_estimateGas y aborte antes de abrir la wallet
     // Adicionalmente parseamos el monto elegido por el usuario
     const tx = await contract.depositar({ 
-      value: parseEther(amount.value.toString()), 
+      value: ethers.utils.parseEther(amount.value.toString()), 
       gasLimit: 300000 
     })
     console.log("Tx enviada:", tx.hash)

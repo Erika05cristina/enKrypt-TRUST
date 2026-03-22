@@ -14,7 +14,7 @@
     "chainId": {
       "type": "integer",
       "const": 43113,
-      "description": "Solo Avalanche Fuji para MVP"
+      "description": "Avalanche Fuji only for this MVP"
     },
     "to": {
       "type": "string",
@@ -27,7 +27,7 @@
     "value": {
       "type": "string",
       "pattern": "^(0|[1-9][0-9]*)$",
-      "description": "Decimal string no negativo"
+      "description": "Non-negative decimal string (wei as integer string)"
     },
     "origin": {
       "type": "string",
@@ -43,8 +43,7 @@
     },
     "clientRef": {
       "type": "string",
-      "description": "Opcional; idempotencia / dedupe en cliente (ignorado por el motor B3)"
+      "description": "Optional; client idempotency / deduplication (ignored by the B3 engine)"
     }
   }
 }
-

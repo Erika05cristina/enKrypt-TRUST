@@ -40,9 +40,9 @@
       "disclaimer": "This AI assessment is heuristic only; it is not a security guarantee nor a substitute for professional audit.",
       "bytecodeTruncatedForLlm": false
     },
-    "_contractProbeNote": "Si TRUST_FUJI_RPC_URL no está definido: probeError no_rpc_url; sin kind/bytecodeLengthBytes",
-    "_explorerNote": "Sin fuente verificada: sourceVerified false + paidFlags incluye EXPLORER_SOURCE_NOT_VERIFIED; el Solidity no va en el JSON 200 (solo en prompt LLM)",
-    "_llmNote": "llmAnalysis solo si TRUST_LLM_ENABLED=true y Ollama OK; salida JSON con verdict/flags/summary; si no, llmSkippedReason opcional"
+    "_contractProbeNote": "If TRUST_FUJI_RPC_URL is unset: probeError no_rpc_url; kind/bytecodeLengthBytes may be absent",
+    "_explorerNote": "Without verified source: sourceVerified false and paidFlags may include EXPLORER_SOURCE_NOT_VERIFIED; Solidity is not included in the 200 JSON (LLM prompt only)",
+    "_llmNote": "llmAnalysis only when TRUST_LLM_ENABLED=true and Ollama succeeds; structured JSON with verdict/flags/summary; otherwise optional llmSkippedReason"
   },
   "errorEnvelope": {
     "error": {
@@ -68,7 +68,7 @@
         "maxTimeoutSeconds": 600
       }
     ],
-    "_note": "maxAmountRequired depende de TRUST_SETTLE_PRICE_USD (ej. $0.001 → 1000); cabecera x-request-id"
+    "_note": "maxAmountRequired depends on TRUST_SETTLE_PRICE_USD (e.g. $0.001 → 1000); includes x-request-id header on response"
   },
   "paymentRequired402Deep": {
     "x402Version": 1,
@@ -86,7 +86,7 @@
         "maxTimeoutSeconds": 600
       }
     ],
-    "_note": "maxAmountRequired depende de TRUST_SETTLE_DEEP_PRICE_USD (ej. $0.02 → 20000)"
+    "_note": "maxAmountRequired depends on TRUST_SETTLE_DEEP_PRICE_USD (e.g. $0.02 → 20000)"
   },
   "unsupportedChain422": {
     "error": {

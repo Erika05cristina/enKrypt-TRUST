@@ -1,39 +1,39 @@
-# TRUST Phase B0 - Contract Freeze
+# TRUST Phase B0 — Contract Freeze
 
-Este documento congela los contratos entre cliente (Person A) y backend (Person B) para iniciar B1 sin ambiguedad.
+This document freezes the contract between the client (Person A) and the backend (Person B) so Phase B1 can start without ambiguity.
 
-## Scope congelado
+## Frozen scope
 
 - Endpoint: `POST /api/risk-check`
-- Red: `avalanche-fuji`
+- Network: `avalanche-fuji`
 - `chainId`: `43113`
-- Esquema de pago x402 MVP: `exact`
-- Precio inicial MVP: `$0.01` (USDC)
-- Timeout de autorizacion: `maxTimeoutSeconds=600`
+- x402 MVP payment scheme: `exact`
+- Initial MVP price: `$0.01` (USDC)
+- Authorization timeout: `maxTimeoutSeconds=600`
 
 ## Header strategy (retry)
 
-Orden de lectura para reintentos pagados:
+Read order for paid retries:
+
 1. `PAYMENT-SIGNATURE`
 2. `X-PAYMENT` (fallback)
-3. Si no existe ninguno: responder `402 PAYMENT_REQUIRED`
+3. If neither is present: respond `402 PAYMENT_REQUIRED`
 
-## Respuestas obligatorias
+## Mandatory response behavior
 
-- Todas las respuestas deben incluir `x-request-id`.
-- `402` debe traer metadata accionable de pago.
-- `200` debe retornar evidencia de riesgo pagada.
-- `400/402/422/500` usan envelope de error unificado.
+- Every response must include `x-request-id`.
+- `402` must return actionable payment metadata.
+- `200` must return paid risk evidence.
+- `400` / `402` / `422` / `500` use a unified error envelope.
 
-## Referencias implementadas
+## Implemented references
 
 - Request schema: `risk-check.request.schema.json`
-- Ejemplos de respuestas: `risk-check.responses.json`
-- Reglas de headers y codigos: `risk-check.protocol.md`
+- Response examples: `risk-check.responses.json`
+- Header and status rules: `risk-check.protocol.md`
 
-## Exit criteria B0
+## B0 exit criteria
 
-- Contratos escritos y compartidos: completado.
-- Payloads de ejemplo para A/B: completado.
-- Validacion de Person A ("sin dudas de schema"): pendiente.
-
+- Written and shared contracts: **done**
+- Example payloads for A/B: **done**
+- Person A schema validation (“no open questions”): **pending**

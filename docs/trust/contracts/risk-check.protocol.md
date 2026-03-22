@@ -3,61 +3,63 @@
 ## Endpoints
 
 - Method: `GET`
-- Path: `/agent-registration.json` — archivo JSON de registro de agente **EIP-8004** (sin pago; CORS permitido). Incluye endpoints de los `POST` de abajo y, si el servidor tiene `TRUST_ERC8004_*` configurado, el bloque `registrations`.
+- Path: `/agent-registration.json` — **EIP-8004** agent registration JSON document (no payment; CORS allowed). Includes the `POST` endpoints below and, if the server has `TRUST_ERC8004_*` configured, the `registrations` block.
 
 - Method: `POST`
 - Paths:
-  - `/api/risk-check` — pago **estándar** (precio `TRUST_SETTLE_PRICE_USD`, default `$0.001`)
-  - `/api/risk-check/deep` — pago **deep** (precio `TRUST_SETTLE_DEEP_PRICE_USD`, default `$0.02`), mayor cupo de tokens LLM
+  - `/api/risk-check` — **standard** tier (price `TRUST_SETTLE_PRICE_USD`, default `$0.001`)
+  - `/api/risk-check/deep` — **deep** tier (price `TRUST_SETTLE_DEEP_PRICE_USD`, default `$0.02`), larger LLM token budget
 - Content-Type: `application/json`
 
-Mismo cuerpo JSON en ambos. El `resource` en `accepts` debe coincidir exactamente con la URL usada (incluye `/deep` si aplica).
+The same JSON body is used for both POST routes. The `resource` field inside `accepts` must match the URL used for that flow exactly (including `/deep` when applicable).
 
 ## x402 retry headers
 
-Backend debe leer en este orden:
+The backend must read payment headers in this order:
+
 1. `PAYMENT-SIGNATURE`
 2. `X-PAYMENT` (fallback)
 
-Si no existen headers de pago validos, responder `402`.
+If no valid payment headers are present, respond with `402`.
 
 ## HTTP status contract
 
-- `200 OK`: respuesta pagada exitosa con evidencia de riesgo.
-- `400 BAD_REQUEST`: payload invalido o faltante.
-- `402 PAYMENT_REQUIRED`: pago faltante/invalido/expirado.
-- `422 UNSUPPORTED_CHAIN`: `chainId` distinto de `43113`.
-- `500 INTERNAL_ERROR`: error no controlado.
+- `200 OK`: successful paid response with risk evidence.
+- `400 BAD_REQUEST`: invalid or missing payload.
+- `402 PAYMENT_REQUIRED`: missing, invalid, or expired payment.
+- `422 UNSUPPORTED_CHAIN`: `chainId` is not `43113`.
+- `500 INTERNAL_ERROR`: unhandled server error.
 
 ## Required response headers
 
-En todas las respuestas:
+On every response:
+
 - `x-request-id: <string>`
 
-En respuestas de pago, incluir headers de facilitador si aplica:
-- `x-payment-response` (opcional, passthrough)
+On paid responses, include facilitator headers when applicable:
+
+- `x-payment-response` (optional, passthrough)
 
 ## MVP economics
 
 - Scheme: `exact`
-- Precio estándar: configurable (`TRUST_SETTLE_PRICE_USD`, default `$0.001` USDC)
-- Precio deep: configurable (`TRUST_SETTLE_DEEP_PRICE_USD`, default `$0.02` USDC)
-- `maxAmountRequired` lo fija el facilitador según ese precio (6 decimales USDC)
+- Standard price: configurable (`TRUST_SETTLE_PRICE_USD`, default `$0.001` USDC)
+- Deep price: configurable (`TRUST_SETTLE_DEEP_PRICE_USD`, default `$0.02` USDC)
+- `maxAmountRequired` is set by the facilitator from that price (6 USDC decimals)
 - Timeout: `maxTimeoutSeconds=600`
 
-## Respuesta 200 (B3 + contractProbe + explorerSourceProbe + LLM opcional)
+## 200 response body (B3 + contractProbe + explorerSourceProbe + optional LLM)
 
-- Campos B3: `verified`, `reputationScore`, `paidRiskScore`, `paidFlags`, `simulatedOutcome`, `explanationSeed`
-- Opcional **EIP-8004:** `erc8004` (`agentRegistry`, `agentId`, `agentRegistration`, …) si el operador configuró `TRUST_ERC8004_IDENTITY_REGISTRY` y `TRUST_ERC8004_AGENT_ID` en el servidor
-- Tras el pago, B3 puede enriquecerse con explorador: `EXPLORER_SOURCE_NOT_VERIFIED` (contrato sin fuente verificada en Routescan/Etherscan-compatible), `EXPLORER_SOURCE_VERIFIED` (fuente publicada; se retira `UNVERIFIED_CONTRACT`), o `EXPLORER_LOOKUP_FAILED` si la API falla
-- `contractProbe`: resultado de `eth_getCode` sobre `to` en Fuji si `TRUST_FUJI_RPC_URL` está configurado (`kind` eoa|contract, `bytecodeLengthBytes`, `deterministicHints` opcionales); si no hay RPC, `probeError` (p. ej. `no_rpc_url`) y el `200` igualmente válido
-- `explorerSourceProbe`: metadatos de `getsourcecode` (sin enviar el Solidity en el JSON); `TRUST_EXPLORER_DISABLED=true` omite la consulta
-- Si `TRUST_LLM_ENABLED=true` y Ollama responde: `llmAnalysis` con `text`, `verdict` (`safe`|`caution`|`malicious`|`unknown`), `flags[]`, `summary`, `disclaimer`, `tier`, `provider`, `model`, …; el prompt puede incluir **Solidity verificado completo** (límite configurable) o bytecode si no hay fuente
-- Si LLM deshabilitado o falla: `llmAnalysis` omitido o `null` y opcional `llmSkippedReason`
+- B3 fields: `verified`, `reputationScore`, `paidRiskScore`, `paidFlags`, `simulatedOutcome`, `explanationSeed`
+- Optional **EIP-8004:** `erc8004` (`agentRegistry`, `agentId`, `agentRegistration`, …) when the operator configured `TRUST_ERC8004_IDENTITY_REGISTRY` and `TRUST_ERC8004_AGENT_ID` on the server
+- After payment, B3 may be enriched from the explorer: `EXPLORER_SOURCE_NOT_VERIFIED` (contract has no verified source on Routescan / Etherscan-compatible API), `EXPLORER_SOURCE_VERIFIED` (source published; `UNVERIFIED_CONTRACT` is removed), or `EXPLORER_LOOKUP_FAILED` if the explorer API fails
+- `contractProbe`: result of `eth_getCode` on `to` on Fuji when `TRUST_FUJI_RPC_URL` is set (`kind` eoa|contract, `bytecodeLengthBytes`, optional `deterministicHints`); without RPC, `probeError` (e.g. `no_rpc_url`) and `200` is still valid
+- `explorerSourceProbe`: metadata from `getsourcecode` (full Solidity is not included in this JSON); `TRUST_EXPLORER_DISABLED=true` skips the lookup
+- If `TRUST_LLM_ENABLED=true` and Ollama succeeds: `llmAnalysis` with `text`, `verdict` (`safe`|`caution`|`malicious`|`unknown`), `flags[]`, `summary`, `disclaimer`, `tier`, `provider`, `model`, …; the prompt may include **full verified Solidity** (configurable limit) or bytecode when no verified source exists
+- If the LLM is disabled or fails: `llmAnalysis` omitted or `null`, and optional `llmSkippedReason`
 
-## Notes for Person A integration
+## Notes for client integration (Person A)
 
-- El cliente puede arrancar siempre sin header de pago.
-- Si recibe `402` con cuerpo x402 v1 en la raíz, debe leer `accepts[0]`. Si el error viene envuelto en `error.details`, usar ese `accepts`.
-- Debe preservar el mismo body en el reintento pagado.
-
+- The client may always start without a payment header.
+- If it receives `402` with an x402 v1 body at the root, it must read `accepts[0]`. If the error is wrapped in `error.details`, use that `accepts`.
+- The same JSON body must be preserved on the paid retry.

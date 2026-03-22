@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
+import DocsView from '../views/DocsView.vue'
 import SafeView from '../views/SafeView.vue'
 import HighRiskView from '../views/HighRiskView.vue'
 
@@ -10,6 +11,11 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: HomeView
+    },
+    {
+      path: '/docs',
+      name: 'docs',
+      component: DocsView
     },
     {
       path: '/safe',

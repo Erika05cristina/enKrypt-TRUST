@@ -1,5 +1,5 @@
 import { ref, shallowRef } from 'vue'
-import { BrowserProvider } from 'ethers'
+import { ethers } from 'ethers'
 
 // Global state so connection persists across route changes
 const userAccount = ref(null)
@@ -52,8 +52,8 @@ export function useWallet() {
     
     try {
       // 2. Obtain Ethers provider & signer (Ethers handles eth_requestAccounts internally on getSigner)
-      console.log("2. Initializing BrowserProvider...")
-      provider.value = new BrowserProvider(window.ethereum)
+      console.log("2. Initializing Web3Provider (ethers v5 API)...")
+      provider.value = new ethers.providers.Web3Provider(window.ethereum)
       
       console.log("3. Awaiting signer (should pop up Wallet)...")
       signer.value = await provider.value.getSigner()
