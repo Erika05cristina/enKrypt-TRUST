@@ -11,7 +11,7 @@
         <a href="#architecture">How it works</a>
         <a href="#demos">Demos</a>
         <a href="#team">Team</a>
-        <a href="https://github.com/Erika05cristina/enKrypt-TRUST/blob/main/docs/trust/technical.md" target="_blank">Docs</a>
+        <router-link to="/docs">Docs</router-link>
       </div>
     </nav>
 

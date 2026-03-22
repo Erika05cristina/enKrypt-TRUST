@@ -30,6 +30,14 @@
         </p>
         <div class="hero-actions">
           <a
+            href="https://github.com/Erika05cristina/enKrypt-TRUST/blob/main/docs/trust/technical.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn btn-primary"
+          >
+            📋 Read Full Technical.md
+          </a>
+          <a
             href="https://github.com/Erika05cristina/enKrypt-TRUST"
             target="_blank"
             rel="noopener noreferrer"
