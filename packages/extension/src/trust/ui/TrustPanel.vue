@@ -32,8 +32,29 @@
           {{ flag }}
         </span>
       </div>
+      </div>
+      
+      <!-- AI Analysis (Llm) -->
+      <div v-if="assessment.paidEvidence?.llmAnalysis" class="llm-analysis-section">
+        <div class="divider"></div>
+        <h4>🧠 AI Analysis ({{ assessment.paidEvidence.llmAnalysis.model }})</h4>
+        <div v-if="assessment.paidEvidence.llmAnalysis.verdict" class="ai-verdict" :class="'verdict-' + assessment.paidEvidence.llmAnalysis.verdict">
+          Verdict: <strong>{{ assessment.paidEvidence.llmAnalysis.verdict.toUpperCase() }}</strong>
+        </div>
+        <p class="ai-text">
+          {{ assessment.paidEvidence.llmAnalysis.summary || assessment.paidEvidence.llmAnalysis.text }}
+        </p>
+      </div>
+      
+      <!-- Contract Probe -->
+      <div v-if="assessment.paidEvidence?.contractProbe" class="probe-section">
+        <div class="divider"></div>
+        <h4>🔍 Contract Probe</h4>
+        <p>Type: <strong>{{ assessment.paidEvidence.contractProbe.kind === 'contract' ? 'Smart Contract' : 'Wallet (EOA)' }}</strong></p>
+        <p v-if="assessment.paidEvidence.contractProbe.bytecodeLengthBytes">Bytecode: {{ assessment.paidEvidence.contractProbe.bytecodeLengthBytes }} bytes</p>
+      </div>
+
     </div>
-  </div>
 </template>
 
 <script setup lang="ts">
@@ -194,5 +215,47 @@ const riskLevelClass = computed(() => {
   border-radius: 4px;
   font-size: 11px;
   font-weight: bold;
+}
+
+.llm-analysis-section, .probe-section {
+  margin-top: 12px;
+}
+
+.llm-analysis-section h4, .probe-section h4 {
+  margin: 0 0 6px 0;
+  font-size: 13px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+}
+
+.ai-verdict {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  margin-bottom: 8px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.verdict-safe { color: #4ade80; border: 1px solid #4ade80; }
+.verdict-caution { color: #facc15; border: 1px solid #facc15; }
+.verdict-malicious { color: #f87171; border: 1px solid #f87171; }
+.verdict-unknown { color: #a1a1aa; border: 1px solid #a1a1aa; }
+
+.ai-text {
+  font-size: 12px;
+  line-height: 1.5;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 8px;
+  border-radius: 6px;
+  border-left: 3px solid #6366f1;
+}
+
+.probe-section p {
+  margin: 2px 0;
+  font-size: 12px;
+  opacity: 0.9;
 }
 </style>

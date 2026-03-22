@@ -42,6 +42,9 @@ export async function orchestrateRiskAssessment(
   if (localSignals.actionType === "unknown") reasons.push("Método de interacción no estándar");
 
   // 3. Ejecución de Inteligencia Pagada si se requirió
+  // HACKATHON OVERRIDE: Llamar siempre a la API para demostrar la respuesta del server en todas las transacciones.
+  decision.shouldQueryPaidApi = true;
+  
   if (decision.shouldQueryPaidApi) {
     paidEvidence = await fetchPaidRiskEvidence(txContext, localSignals.localFlags);
     
@@ -84,11 +87,6 @@ export async function orchestrateRiskAssessment(
     finalRiskScore: finalScore,
     reasons,
     aiSummary: `TRUST Agent Assessment: Nivel ${finalLevel.toUpperCase()} con Score: ${finalScore}/100.`,
-    paidEvidence: paidEvidence ? {
-      reputationScore: paidEvidence.reputationScore,
-      paidRiskScore: paidEvidence.paidRiskScore,
-      paidFlags: paidEvidence.paidFlags,
-      simulatedOutcome: paidEvidence.simulatedOutcome
-    } : undefined
+    paidEvidence: paidEvidence || undefined
   };
 }

@@ -104,3 +104,43 @@ export interface TrustX402AcceptOption {
   maxTimeoutSeconds: number;
 }
 
+export interface PendingTxContext {
+  chainId: number;
+  from: string;
+  to: string;
+  value: string;
+  data: string;
+  origin?: string;
+}
+
+export interface LocalRiskSignals {
+  actionType: "transfer" | "approve" | "contract_call" | "unknown";
+  isUnlimitedApproval: boolean;
+  isNativeTransfer: boolean;
+  isContractCall: boolean;
+  isKnownContract: boolean;
+  chainSupported: boolean;
+  tokenAddress?: string;
+  spender?: string;
+  approvalAmount?: string;
+  methodSig?: string;
+  localRiskScore: number;
+  localFlags: string[];
+}
+
+export interface AgentDecision {
+  shouldQueryPaidApi: boolean;
+  endpoint: "risk-bundle" | "reputation" | "simulation" | null;
+  reason: string;
+  budgetMicrousdc: number;
+  queryPayload?: any;
+}
+
+export interface FinalRiskAssessment {
+  finalRiskLevel: "low" | "medium" | "high";
+  finalRiskScore: number;
+  reasons: string[];
+  aiSummary: string;
+  paidEvidence?: TrustPaidRiskEvidence;
+}
+
