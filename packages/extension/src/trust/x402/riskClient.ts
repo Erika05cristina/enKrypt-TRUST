@@ -1,6 +1,6 @@
 import { PendingTxContext } from "../types";
 
-const RISK_API_URL = "http://localhost:3000/api/risk-check"; // Endpoint backend temporal
+const RISK_API_URL = "http://192.168.101.236:8787/api/risk-check"; // Endpoint backend del compañero
 
 export async function fetchPaidRiskEvidence(
   txContext: PendingTxContext,

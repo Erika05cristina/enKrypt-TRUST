@@ -211,7 +211,7 @@
       <base-button
         title="Send"
         :click="approve"
-        :disabled="isProcessing || errorMsg != '' || isTrustLoading"
+        :disabled="isProcessing || errorMsg != '' || isTrustLoading || (trustAssessment && trustAssessment.finalRiskLevel === 'high')"
       />
     </template>
   </common-popup>

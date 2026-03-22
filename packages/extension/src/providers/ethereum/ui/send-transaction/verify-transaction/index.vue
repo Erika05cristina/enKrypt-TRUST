@@ -63,7 +63,7 @@
           <base-button
             title="Confirm and send"
             :click="sendAction"
-            :disabled="isProcessing || isTrustLoading"
+            :disabled="isProcessing || isTrustLoading || (trustAssessment && trustAssessment.finalRiskLevel === 'high')"
           />
         </div>
       </div>
