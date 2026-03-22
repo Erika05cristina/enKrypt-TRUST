@@ -28,8 +28,8 @@
           <a href="#" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 8px; margin: 0;">
             <img src="/logo-av.png" alt="Avalanche" style="height: 20px;" /> Built on Avalanche
           </a>
-          <a href="https://youtube.com/" target="_blank" class="btn btn-outline" style="border: 2px solid #8B5CF6; color: white; background: rgba(139, 92, 246, 0.1); padding: 14px 28px; border-radius: 8px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; margin: 0; box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);">
-            ▶ Watch Pitch
+          <a href="https://youtu.be/RWUQ1ScWPK4" target="_blank" class="btn btn-outline" style="border: 2px solid #8B5CF6; color: white; background: rgba(139, 92, 246, 0.1); padding: 14px 28px; border-radius: 8px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; margin: 0; box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);">
+            ▶ Watch Demo
           </a>
         </div>
       </div>
@@ -146,6 +146,29 @@
           <div class="demo-badge safe">Demo 3: Trusted</div>
           <h4>The Everyday Protocol 🦄</h4>
           <p>A standard interaction with a <strong>Verified Organization</strong> like Uniswap or Aave, used daily by millions. <br><i>Result:</i> Fast local processing. <strong class="text-green">Score 5/100 (100% Trusted)</strong>.</p>
+        </div>
+      </div>
+
+      <!-- On-Chain Contracts -->
+      <div class="contracts-box glass-card" style="max-width: 800px; margin: 30px auto 0; text-align: left;">
+        <h4 style="color: #9CA3AF; font-size: 13px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; margin: 0 0 16px;">🔍 On-Chain Contracts — Avalanche Fuji Testnet</h4>
+        <div class="contract-row">
+          <span class="contract-label danger-label">Demo 2 — Drainer Contract</span>
+          <a
+            href="https://testnet.snowtrace.io/address/0x7DaC8DFc8fF26442030adEE6e64222DA2FAD050B"
+            target="_blank"
+            rel="noopener"
+            class="contract-address"
+          >0x7DaC8DFc8fF26442030adEE6e64222DA2FAD050B ↗</a>
+        </div>
+        <div class="contract-row" style="margin-top: 12px;">
+          <span class="contract-label caution-label">Demo 1 — Safe Contract</span>
+          <a
+            href="https://testnet.snowtrace.io/address/0x70eFe282B5040a24d1c7C1b37C155d1cFC45b814"
+            target="_blank"
+            rel="noopener"
+            class="contract-address"
+          >0x70eFe282B5040a24d1c7C1b37C155d1cFC45b814 ↗</a>
         </div>
       </div>
     </section>
@@ -580,6 +603,48 @@ footer p { color: var(--text-muted); }
 .demo-badge.safe { background: var(--secondary); color: #000; }
 .demo-badge.danger { background: var(--danger); color: #fff; }
 .demo-badge.caution { background: #FFBD2E; color: #000; }
+
+/* Contracts Box */
+.contracts-box {
+  padding: 20px 24px;
+}
+.contract-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.contract-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.caution-label {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #6ee7b7;
+}
+.danger-label {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #FCA5A5;
+}
+.contract-address {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 13px;
+  color: #c4b5fd;
+  text-decoration: none;
+  word-break: break-all;
+  transition: color 0.2s;
+}
+.contract-address:hover {
+  color: #fff;
+  text-decoration: underline;
+}
 
 .demo-item h4 {
   font-size: 20px;
