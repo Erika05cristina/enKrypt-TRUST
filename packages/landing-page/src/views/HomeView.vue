@@ -11,7 +11,7 @@
         <a href="#architecture">How it works</a>
         <a href="#demos">Demos</a>
         <a href="#team">Team</a>
-        <router-link to="/docs">Docs</router-link>
+        <a href="https://github.com/Erika05cristina/enKrypt-TRUST/blob/main/docs/trust/technical.md" target="_blank">Docs</a>
       </div>
     </nav>
 
@@ -185,7 +185,7 @@
     <footer>
       <p>Built with 🩵 for the Hackathon</p>
       <p class="tech-stack">Vue 3 • TypeScript • Avalanche • ThirdWeb x402 • EIP-8004 • AI LLMs</p>
-      <p class="footer-docs"><router-link to="/docs">Full documentation →</router-link></p>
+      <p class="footer-docs"><a href="https://github.com/Erika05cristina/enKrypt-TRUST/blob/main/docs/trust/technical.md" target="_blank">Full documentation →</a></p>
     </footer>
   </div>
 </template>

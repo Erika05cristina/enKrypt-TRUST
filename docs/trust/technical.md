@@ -2,7 +2,7 @@
 
 Architecture and integration notes for **TRUST** (Transaction Risk & User Security Toolkit) on the fork of **[Enkrypt](https://github.com/enkryptcom/enKrypt)**. Covers the **risk-assessment agent** design, the **HTTP x402** micropayment flow, alignment with **[EIP-8004](https://eips.ethereum.org/EIPS/eip-8004) (Trustless Agents)**, external services composed by the backend, and explicit scope boundaries.
 
-> 🛠️ **Setup & Execution:** Looking to spin up the architecture locally? See our comprehensive **[Installation Guide](INSTALLATION.md)**.
+> **Setup & Execution:** Looking to spin up the architecture locally? See our comprehensive **[Installation Guide](INSTALLATION.md)**.
 
 ---
 
